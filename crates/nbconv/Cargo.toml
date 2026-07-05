@@ -1,0 +1,14 @@
+[package]
+name = "nbconv"
+version = "0.1.0"
+edition = "2021"
+description = "Convert Jupyter notebooks to HTML"
+
+[[bin]]
+name = "nbconv"
+path = "src/main.rs"
+
+[dependencies]
+nbformat = { path = "../nbformat" }
+nbhtml   = { path = "../nbhtml" }
+clap = { version = "4", features = ["derive"] }

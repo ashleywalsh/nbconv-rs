@@ -1,0 +1,13 @@
+[package]
+name = "nbhtml"
+version = "0.1.0"
+edition = "2021"
+description = "Transform parsed Jupyter notebooks into typed HTML document structures"
+
+[dependencies]
+nbformat       = { path = "../nbformat" }
+pulldown-cmark = "0.13"
+syntect        = "5"
+
+[dev-dependencies]
+nbformat = { path = "../nbformat" }

@@ -1,0 +1,3 @@
+[workspace]
+members = ["crates/nbformat", "crates/nbhtml", "crates/nbconv"]
+resolver = "2"
