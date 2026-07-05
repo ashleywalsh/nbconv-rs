@@ -48,31 +48,44 @@ fn main() {
         return;
     }
 
-    // ── require input when not listing themes ─────────────────────────────────
-    let input = match &args.input {
-        Some(p) => p,
+    // ── 1. Read source ───────────────────────────────────────────────────────
+    // Use the input file when provided; otherwise read from stdin.
+    let (json, title) = match &args.input {
+        Some(path) => {
+            let json = std::fs::read_to_string(path).unwrap_or_else(|e| {
+                eprintln!("error: cannot read {}: {e}", path.display());
+                std::process::exit(1);
+            });
+            let title = path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("Notebook")
+                .to_string();
+            (json, title)
+        }
         None => {
-            eprintln!("error: an input .ipynb file is required (or use --list-themes)");
-            std::process::exit(1);
+            use std::io::Read as _;
+            let mut json = String::new();
+            std::io::stdin()
+                .lock()
+                .read_to_string(&mut json)
+                .unwrap_or_else(|e| {
+                    eprintln!("error: reading stdin: {e}");
+                    std::process::exit(1);
+                });
+            (json, "Notebook".to_string())
         }
     };
 
-    // ── 1. Parse ──────────────────────────────────────────────────────────────
-    let json = std::fs::read_to_string(input).unwrap_or_else(|e| {
-        eprintln!("error: cannot read {}: {e}", input.display());
-        std::process::exit(1);
-    });
-
     let notebook = nbformat::parse(&json).unwrap_or_else(|e| {
-        eprintln!("error: failed to parse {}: {e}", input.display());
+        let src = args.input.as_ref().map(|p| p.display().to_string())
+            .unwrap_or_else(|| "stdin".to_string());
+        eprintln!("error: failed to parse {src}: {e}");
         std::process::exit(1);
     });
 
     // ── 2. Transform ──────────────────────────────────────────────────────────
-    let title = input
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .unwrap_or("Notebook");
+    let title = title.as_str();
 
     let opts = nbhtml::HtmlOptions {
         theme:   args.theme.clone(),
