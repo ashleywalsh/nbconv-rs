@@ -19,8 +19,10 @@ output is still written. A summary of pass/fail results is printed at the end.
 Open nbconv.html and nbconvert.html side-by-side in a browser to compare.
 """
 
+import json
 import subprocess
 import sys
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -43,6 +45,7 @@ class ToolResult:
     success: bool
     html: str
     stderr: str
+    duration_ms: int = 0
 
 
 @dataclass
@@ -80,6 +83,7 @@ def load_notebooks() -> list[tuple[str, Path]]:
 
 
 def run_nbconv(nb: Path) -> ToolResult:
+    t0 = time.perf_counter()
     result = subprocess.run(
         [str(NBCONV), str(nb)],
         capture_output=True,
@@ -89,10 +93,12 @@ def run_nbconv(nb: Path) -> ToolResult:
         success=result.returncode == 0,
         html=result.stdout,
         stderr=result.stderr,
+        duration_ms=round((time.perf_counter() - t0) * 1000),
     )
 
 
 def run_nbconvert(nb: Path) -> ToolResult:
+    t0 = time.perf_counter()
     result = subprocess.run(
         ["uv", "run", "--script", str(NBCONVERT_SCRIPT), str(nb)],
         capture_output=True,
@@ -102,6 +108,7 @@ def run_nbconvert(nb: Path) -> ToolResult:
         success=result.returncode == 0,
         html=result.stdout,
         stderr=result.stderr,
+        duration_ms=round((time.perf_counter() - t0) * 1000),
     )
 
 
@@ -111,13 +118,15 @@ def run_nbconvert(nb: Path) -> ToolResult:
 def process_notebook(repo: str, nb: Path) -> NotebookResult:
     result = NotebookResult(repo=repo, name=nb.stem)
 
-    print(f"  nbconv    ... ", end="", flush=True)
+    print("  nbconv    ... ", end="", flush=True)
     result.nbconv = run_nbconv(nb)
-    print("ok" if result.nbconv.success else "FAILED")
+    status = "ok" if result.nbconv.success else "FAILED"
+    print(f"{status} ({result.nbconv.duration_ms}ms)")
 
-    print(f"  nbconvert ... ", end="", flush=True)
+    print("  nbconvert ... ", end="", flush=True)
     result.nbconvert = run_nbconvert(nb)
-    print("ok" if result.nbconvert.success else "FAILED")
+    status = "ok" if result.nbconvert.success else "FAILED"
+    print(f"{status} ({result.nbconvert.duration_ms}ms)")
 
     out_dir = COMPARISONS_DIR / repo / nb.stem
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -133,6 +142,15 @@ def process_notebook(repo: str, nb: Path) -> NotebookResult:
         (out_dir / "nbconvert.stderr").write_text(
             result.nbconvert.stderr, encoding="utf-8"
         )
+
+    timing = {
+        "notebook": nb.name,
+        "nbconv_ms": result.nbconv.duration_ms,
+        "nbconv_ok": result.nbconv.success,
+        "nbconvert_ms": result.nbconvert.duration_ms,
+        "nbconvert_ok": result.nbconvert.success,
+    }
+    (out_dir / "timing.json").write_text(json.dumps(timing, indent=2), encoding="utf-8")
 
     return result
 
