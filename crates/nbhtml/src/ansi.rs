@@ -59,24 +59,44 @@ enum AnsiColor {
 }
 
 const FG: &[&str] = &[
-    "ansi-black-fg",   "ansi-red-fg",     "ansi-green-fg",   "ansi-yellow-fg",
-    "ansi-blue-fg",    "ansi-magenta-fg", "ansi-cyan-fg",    "ansi-white-fg",
+    "ansi-black-fg",
+    "ansi-red-fg",
+    "ansi-green-fg",
+    "ansi-yellow-fg",
+    "ansi-blue-fg",
+    "ansi-magenta-fg",
+    "ansi-cyan-fg",
+    "ansi-white-fg",
 ];
 const FG_INT: &[&str] = &[
-    "ansi-black-intense-fg",   "ansi-red-intense-fg",
-    "ansi-green-intense-fg",   "ansi-yellow-intense-fg",
-    "ansi-blue-intense-fg",    "ansi-magenta-intense-fg",
-    "ansi-cyan-intense-fg",    "ansi-white-intense-fg",
+    "ansi-black-intense-fg",
+    "ansi-red-intense-fg",
+    "ansi-green-intense-fg",
+    "ansi-yellow-intense-fg",
+    "ansi-blue-intense-fg",
+    "ansi-magenta-intense-fg",
+    "ansi-cyan-intense-fg",
+    "ansi-white-intense-fg",
 ];
 const BG: &[&str] = &[
-    "ansi-black-bg",   "ansi-red-bg",     "ansi-green-bg",   "ansi-yellow-bg",
-    "ansi-blue-bg",    "ansi-magenta-bg", "ansi-cyan-bg",    "ansi-white-bg",
+    "ansi-black-bg",
+    "ansi-red-bg",
+    "ansi-green-bg",
+    "ansi-yellow-bg",
+    "ansi-blue-bg",
+    "ansi-magenta-bg",
+    "ansi-cyan-bg",
+    "ansi-white-bg",
 ];
 const BG_INT: &[&str] = &[
-    "ansi-black-intense-bg",   "ansi-red-intense-bg",
-    "ansi-green-intense-bg",   "ansi-yellow-intense-bg",
-    "ansi-blue-intense-bg",    "ansi-magenta-intense-bg",
-    "ansi-cyan-intense-bg",    "ansi-white-intense-bg",
+    "ansi-black-intense-bg",
+    "ansi-red-intense-bg",
+    "ansi-green-intense-bg",
+    "ansi-yellow-intense-bg",
+    "ansi-blue-intense-bg",
+    "ansi-magenta-intense-bg",
+    "ansi-cyan-intense-bg",
+    "ansi-white-intense-bg",
 ];
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -87,20 +107,34 @@ pub(crate) fn strip(input: &str) -> String {
     let mut out = String::with_capacity(input.len());
     let mut chars = input.chars().peekable();
     while let Some(ch) = chars.next() {
-        if ch != '\x1b' { out.push(ch); continue; }
+        if ch != '\x1b' {
+            out.push(ch);
+            continue;
+        }
         match chars.peek().copied() {
             Some('[') => {
                 chars.next();
-                for c in chars.by_ref() { if ('@'..='~').contains(&c) { break; } }
+                for c in chars.by_ref() {
+                    if ('@'..='~').contains(&c) {
+                        break;
+                    }
+                }
             }
             Some(']') => {
                 chars.next();
                 while let Some(c) = chars.next() {
-                    if c == '\x07' { break; }
-                    if c == '\x1b' { chars.next(); break; }
+                    if c == '\x07' {
+                        break;
+                    }
+                    if c == '\x1b' {
+                        chars.next();
+                        break;
+                    }
                 }
             }
-            _ => { chars.next(); }
+            _ => {
+                chars.next();
+            }
         }
     }
     out
@@ -114,17 +148,20 @@ pub(crate) fn to_html(input: &str) -> String {
     let mut out = String::with_capacity(input.len() * 2);
 
     // SGR state
-    let mut fg:        Option<AnsiColor> = None;
-    let mut bg:        Option<AnsiColor> = None;
-    let mut bold      = false;
+    let mut fg: Option<AnsiColor> = None;
+    let mut bg: Option<AnsiColor> = None;
+    let mut bold = false;
     let mut underline = false;
-    let mut inverse   = false;
+    let mut inverse = false;
 
     let mut buf = String::new();
     let mut chars = input.chars().peekable();
 
     while let Some(ch) = chars.next() {
-        if ch != '\x1b' { buf.push(ch); continue; }
+        if ch != '\x1b' {
+            buf.push(ch);
+            continue;
+        }
 
         // Flush pending text before changing state.
         if !buf.is_empty() {
@@ -136,9 +173,12 @@ pub(crate) fn to_html(input: &str) -> String {
             Some('[') => {
                 chars.next();
                 let mut param = String::new();
-                let mut end   = 'm';
+                let mut end = 'm';
                 for c in chars.by_ref() {
-                    if ('@'..='~').contains(&c) { end = c; break; }
+                    if ('@'..='~').contains(&c) {
+                        end = c;
+                        break;
+                    }
                     param.push(c);
                 }
                 if end == 'm' {
@@ -147,18 +187,31 @@ pub(crate) fn to_html(input: &str) -> String {
                     } else {
                         param.split(';').filter_map(|s| s.parse().ok()).collect()
                     };
-                    apply_sgr(&codes, &mut fg, &mut bg,
-                               &mut bold, &mut underline, &mut inverse);
+                    apply_sgr(
+                        &codes,
+                        &mut fg,
+                        &mut bg,
+                        &mut bold,
+                        &mut underline,
+                        &mut inverse,
+                    );
                 }
             }
             Some(']') => {
                 chars.next();
                 while let Some(c) = chars.next() {
-                    if c == '\x07' { break; }
-                    if c == '\x1b' { chars.next(); break; }
+                    if c == '\x07' {
+                        break;
+                    }
+                    if c == '\x1b' {
+                        chars.next();
+                        break;
+                    }
                 }
             }
-            _ => { chars.next(); }
+            _ => {
+                chars.next();
+            }
         }
     }
     if !buf.is_empty() {
@@ -171,27 +224,44 @@ pub(crate) fn to_html(input: &str) -> String {
 
 fn apply_sgr(
     codes: &[u32],
-    fg: &mut Option<AnsiColor>, bg: &mut Option<AnsiColor>,
-    bold: &mut bool, underline: &mut bool, inverse: &mut bool,
+    fg: &mut Option<AnsiColor>,
+    bg: &mut Option<AnsiColor>,
+    bold: &mut bool,
+    underline: &mut bool,
+    inverse: &mut bool,
 ) {
     let mut i = 0;
     while i < codes.len() {
         match codes[i] {
-            0  => { *fg = None; *bg = None; *bold = false; *underline = false; *inverse = false; }
-            1  => *bold = true,
-            4  => *underline = true,
-            5  => *bold = true,    // blink → bold (matches Python nbconvert)
-            7  => *inverse = true,
+            0 => {
+                *fg = None;
+                *bg = None;
+                *bold = false;
+                *underline = false;
+                *inverse = false;
+            }
+            1 => *bold = true,
+            4 => *underline = true,
+            5 => *bold = true, // blink → bold (matches Python nbconvert)
+            7 => *inverse = true,
             21 | 22 => *bold = false,
             24 => *underline = false,
             27 => *inverse = false,
-            30..=37  => *fg = Some(AnsiColor::Index((codes[i] - 30) as u8)),
-            38 => { if let Some(c) = ext_color(codes, &mut i) { *fg = Some(c); } }
+            30..=37 => *fg = Some(AnsiColor::Index((codes[i] - 30) as u8)),
+            38 => {
+                if let Some(c) = ext_color(codes, &mut i) {
+                    *fg = Some(c);
+                }
+            }
             39 => *fg = None,
-            40..=47  => *bg = Some(AnsiColor::Index((codes[i] - 40) as u8)),
-            48 => { if let Some(c) = ext_color(codes, &mut i) { *bg = Some(c); } }
+            40..=47 => *bg = Some(AnsiColor::Index((codes[i] - 40) as u8)),
+            48 => {
+                if let Some(c) = ext_color(codes, &mut i) {
+                    *bg = Some(c);
+                }
+            }
             49 => *bg = None,
-            90..=97  => *fg = Some(AnsiColor::Index((codes[i] - 90 + 8) as u8)),
+            90..=97 => *fg = Some(AnsiColor::Index((codes[i] - 90 + 8) as u8)),
             100..=107 => *bg = Some(AnsiColor::Index((codes[i] - 100 + 8) as u8)),
             _ => {}
         }
@@ -201,7 +271,9 @@ fn apply_sgr(
 
 fn ext_color(codes: &[u32], i: &mut usize) -> Option<AnsiColor> {
     *i += 1;
-    if *i >= codes.len() { return None; }
+    if *i >= codes.len() {
+        return None;
+    }
     match codes[*i] {
         5 => {
             // 256-colour: 38;5;n
@@ -223,9 +295,13 @@ fn ext_color(codes: &[u32], i: &mut usize) -> Option<AnsiColor> {
 // ── Span emission ─────────────────────────────────────────────────────────────
 
 fn push_span(
-    out: &mut String, text: &str,
-    fg: Option<AnsiColor>, bg: Option<AnsiColor>,
-    bold: bool, underline: bool, inverse: bool,
+    out: &mut String,
+    text: &str,
+    fg: Option<AnsiColor>,
+    bg: Option<AnsiColor>,
+    bold: bool,
+    underline: bool,
+    inverse: bool,
 ) {
     let esc = html_esc(text);
 
@@ -235,7 +311,7 @@ fn push_span(
     }
 
     let mut classes: Vec<&str> = Vec::new();
-    let mut styles:  Vec<String> = Vec::new();
+    let mut styles: Vec<String> = Vec::new();
 
     // Bold-colour shift: bold + standard colour → bright colour (matches
     // Python nbconvert: `fg + 8 if bold and fg in range(8) else fg`).
@@ -249,34 +325,38 @@ fn push_span(
 
     // Foreground
     match draw_fg {
-        None if inverse                    => classes.push("ansi-default-inverse-fg"),
-        Some(AnsiColor::Index(i)) if i < 8  => classes.push(FG[i as usize]),
+        None if inverse => classes.push("ansi-default-inverse-fg"),
+        Some(AnsiColor::Index(i)) if i < 8 => classes.push(FG[i as usize]),
         Some(AnsiColor::Index(i)) if i < 16 => classes.push(FG_INT[(i - 8) as usize]),
-        Some(AnsiColor::Index(i))           => {
-            let (r,g,b) = idx_rgb(i);
+        Some(AnsiColor::Index(i)) => {
+            let (r, g, b) = idx_rgb(i);
             styles.push(format!("color:rgb({},{},{})", r, g, b));
         }
-        Some(AnsiColor::Rgb(r,g,b)) =>
-            styles.push(format!("color:rgb({},{},{})", r, g, b)),
+        Some(AnsiColor::Rgb(r, g, b)) => styles.push(format!("color:rgb({},{},{})", r, g, b)),
         _ => {}
     }
 
     // Background
     match draw_bg {
-        None if inverse                    => classes.push("ansi-default-inverse-bg"),
-        Some(AnsiColor::Index(i)) if i < 8  => classes.push(BG[i as usize]),
+        None if inverse => classes.push("ansi-default-inverse-bg"),
+        Some(AnsiColor::Index(i)) if i < 8 => classes.push(BG[i as usize]),
         Some(AnsiColor::Index(i)) if i < 16 => classes.push(BG_INT[(i - 8) as usize]),
-        Some(AnsiColor::Index(i))           => {
-            let (r,g,b) = idx_rgb(i);
+        Some(AnsiColor::Index(i)) => {
+            let (r, g, b) = idx_rgb(i);
             styles.push(format!("background-color:rgb({},{},{})", r, g, b));
         }
-        Some(AnsiColor::Rgb(r,g,b)) =>
-            styles.push(format!("background-color:rgb({},{},{})", r, g, b)),
+        Some(AnsiColor::Rgb(r, g, b)) => {
+            styles.push(format!("background-color:rgb({},{},{})", r, g, b))
+        }
         _ => {}
     }
 
-    if bold      { classes.push("ansi-bold"); }
-    if underline { classes.push("ansi-underline"); }
+    if bold {
+        classes.push("ansi-bold");
+    }
+    if underline {
+        classes.push("ansi-underline");
+    }
 
     out.push_str("<span");
     if !classes.is_empty() {
@@ -295,8 +375,11 @@ fn push_span(
 }
 
 fn has_style(
-    fg: Option<AnsiColor>, bg: Option<AnsiColor>,
-    bold: bool, underline: bool, inverse: bool,
+    fg: Option<AnsiColor>,
+    bg: Option<AnsiColor>,
+    bold: bool,
+    underline: bool,
+    inverse: bool,
 ) -> bool {
     fg.is_some() || bg.is_some() || bold || underline || inverse
 }
@@ -322,7 +405,7 @@ fn html_esc(s: &str) -> String {
             '&' => out.push_str("&amp;"),
             '<' => out.push_str("&lt;"),
             '>' => out.push_str("&gt;"),
-            _   => out.push(c),
+            _ => out.push(c),
         }
     }
     out
@@ -337,16 +420,24 @@ mod tests {
     // strip ────────────────────────────────────────────────────────────────────
 
     #[test]
-    fn strip_plain_unchanged()  { assert_eq!(strip("hello\nworld"), "hello\nworld"); }
+    fn strip_plain_unchanged() {
+        assert_eq!(strip("hello\nworld"), "hello\nworld");
+    }
 
     #[test]
-    fn strip_sgr_color()        { assert_eq!(strip("\x1b[31mred\x1b[0m normal"), "red normal"); }
+    fn strip_sgr_color() {
+        assert_eq!(strip("\x1b[31mred\x1b[0m normal"), "red normal");
+    }
 
     #[test]
-    fn strip_bold()             { assert_eq!(strip("\x1b[1mBold\x1b[22m text"), "Bold text"); }
+    fn strip_bold() {
+        assert_eq!(strip("\x1b[1mBold\x1b[22m text"), "Bold text");
+    }
 
     #[test]
-    fn strip_256_color()        { assert_eq!(strip("\x1b[38;5;196mcolored\x1b[0m"), "colored"); }
+    fn strip_256_color() {
+        assert_eq!(strip("\x1b[38;5;196mcolored\x1b[0m"), "colored");
+    }
 
     #[test]
     fn strip_osc_hyperlink() {
@@ -355,23 +446,25 @@ mod tests {
     }
 
     #[test]
-    fn strip_bare_esc_at_end()  { assert_eq!(strip("text\x1b"), "text"); }
+    fn strip_bare_esc_at_end() {
+        assert_eq!(strip("text\x1b"), "text");
+    }
 
     // to_html ─────────────────────────────────────────────────────────────────
 
     #[test]
     fn to_html_plain_text_escaped() {
         let html = to_html("plain <text> & more");
-        assert!(html.contains("&lt;"),  "html = {html:?}");
+        assert!(html.contains("&lt;"), "html = {html:?}");
         assert!(html.contains("&amp;"), "html = {html:?}");
-        assert!(!html.contains('<'),    "< must be escaped");
+        assert!(!html.contains('<'), "< must be escaped");
     }
 
     #[test]
     fn to_html_red_foreground() {
         let html = to_html("\x1b[31mred\x1b[0m");
         assert!(html.contains("ansi-red-fg"), "html = {html:?}");
-        assert!(html.contains("red"),          "html = {html:?}");
+        assert!(html.contains("red"), "html = {html:?}");
     }
 
     #[test]
@@ -383,7 +476,7 @@ mod tests {
     #[test]
     fn to_html_reset_separates_styled_and_plain() {
         let html = to_html("\x1b[31mred\x1b[0m normal");
-        let span_end  = html.find("</span>").expect("closing span");
+        let span_end = html.find("</span>").expect("closing span");
         let plain_pos = html.find("normal").expect("plain text");
         assert!(plain_pos > span_end, "'normal' must come after </span>");
     }
@@ -392,8 +485,11 @@ mod tests {
     fn to_html_256_color_uses_rgb_style() {
         // index 196 = rgb(255,0,0)
         let html = to_html("\x1b[38;5;196mtext\x1b[0m");
-        assert!(html.contains("color:rgb("),  "expected rgb() style: {html:?}");
-        assert!(html.contains("255,0,0"),     "expected (255,0,0): {html:?}");
+        assert!(
+            html.contains("color:rgb("),
+            "expected rgb() style: {html:?}"
+        );
+        assert!(html.contains("255,0,0"), "expected (255,0,0): {html:?}");
     }
 
     #[test]
@@ -415,7 +511,7 @@ mod tests {
         // bold + fg=red(1) → shifted to bright-red(9) → ansi-red-intense-fg
         let html = to_html("\x1b[1;31mtext\x1b[0m");
         assert!(html.contains("ansi-red-intense-fg"), "html = {html:?}");
-        assert!(html.contains("ansi-bold"),            "html = {html:?}");
+        assert!(html.contains("ansi-bold"), "html = {html:?}");
     }
 
     #[test]

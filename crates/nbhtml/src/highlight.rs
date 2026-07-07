@@ -11,13 +11,18 @@ use syntect::parsing::{SyntaxReference, SyntaxSet};
 const DEFAULT_THEME: &str = "InspiredGitHub";
 
 static SS: OnceLock<SyntaxSet> = OnceLock::new();
-static TS: OnceLock<ThemeSet>  = OnceLock::new();
+static TS: OnceLock<ThemeSet> = OnceLock::new();
 
-fn ss() -> &'static SyntaxSet { SS.get_or_init(SyntaxSet::load_defaults_newlines) }
-fn ts() -> &'static ThemeSet  { TS.get_or_init(ThemeSet::load_defaults) }
+fn ss() -> &'static SyntaxSet {
+    SS.get_or_init(SyntaxSet::load_defaults_newlines)
+}
+fn ts() -> &'static ThemeSet {
+    TS.get_or_init(ThemeSet::load_defaults)
+}
 
 fn resolve_theme(name: &str) -> &'static Theme {
-    ts().themes.get(name)
+    ts().themes
+        .get(name)
         .or_else(|| ts().themes.get(DEFAULT_THEME))
         .expect("InspiredGitHub is always present in syntect defaults")
 }
@@ -29,11 +34,11 @@ fn resolve_theme(name: &str) -> &'static Theme {
 /// Returns inner `<span style="…">` HTML — no `<pre>` wrapper.
 /// Falls back to plain HTML-escaped text on unknown language or error.
 pub(crate) fn highlight(source: &str, language: &str, theme: &str) -> String {
-    let ss  = ss();
+    let ss = ss();
     let syn = find_syntax(ss, language);
     match highlighted_html_for_string(source, ss, syn, resolve_theme(theme)) {
         Ok(html) => strip_pre_wrapper(&html),
-        Err(_)   => plain_escape(source),
+        Err(_) => plain_escape(source),
     }
 }
 
@@ -47,53 +52,67 @@ pub(crate) fn available_themes() -> Vec<String> {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 fn find_syntax<'a>(ss: &'a SyntaxSet, language: &str) -> &'a SyntaxReference {
-    if let Some(s) = ss.find_syntax_by_name(language)                 { return s; }
-    if let Some(s) = ss.find_syntax_by_name(&title_case(language))    { return s; }
+    if let Some(s) = ss.find_syntax_by_name(language) {
+        return s;
+    }
+    if let Some(s) = ss.find_syntax_by_name(&title_case(language)) {
+        return s;
+    }
     if let Some(ext) = lang_to_ext(language) {
-        if let Some(s) = ss.find_syntax_by_extension(ext)             { return s; }
+        if let Some(s) = ss.find_syntax_by_extension(ext) {
+            return s;
+        }
     }
     ss.find_syntax_plain_text()
 }
 
 fn title_case(s: &str) -> String {
     let mut c = s.chars();
-    match c.next() { None => String::new(), Some(f) => f.to_uppercase().collect::<String>() + c.as_str() }
+    match c.next() {
+        None => String::new(),
+        Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
+    }
 }
 
 fn lang_to_ext(lang: &str) -> Option<&'static str> {
     Some(match lang.to_ascii_lowercase().as_str() {
         "python" | "python3" | "ipython" | "ipython3" | "pypy" => "py",
-        "javascript" | "js"       => "js",
-        "typescript" | "ts"       => "ts",
-        "rust"                    => "rs",
-        "julia"                   => "jl",
-        "r"                       => "r",
-        "bash" | "shell" | "sh"   => "sh",
-        "c"                       => "c",
-        "c++" | "cpp"             => "cpp",
-        "java"                    => "java",
-        "go"                      => "go",
-        "ruby" | "rb"             => "rb",
-        "sql"                     => "sql",
-        "html"                    => "html",
-        "css"                     => "css",
-        "json"                    => "json",
-        "yaml" | "yml"            => "yaml",
-        _                         => return None,
+        "javascript" | "js" => "js",
+        "typescript" | "ts" => "ts",
+        "rust" => "rs",
+        "julia" => "jl",
+        "r" => "r",
+        "bash" | "shell" | "sh" => "sh",
+        "c" => "c",
+        "c++" | "cpp" => "cpp",
+        "java" => "java",
+        "go" => "go",
+        "ruby" | "rb" => "rb",
+        "sql" => "sql",
+        "html" => "html",
+        "css" => "css",
+        "json" => "json",
+        "yaml" | "yml" => "yaml",
+        _ => return None,
     })
 }
 
 fn strip_pre_wrapper(html: &str) -> String {
     let start = html.find('\n').map_or(0, |i| i + 1);
-    let end   = html.rfind("</pre>").unwrap_or(html.len());
+    let end = html.rfind("</pre>").unwrap_or(html.len());
     html[start..end].to_string()
 }
 
 fn plain_escape(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     for c in s.chars() {
-        match c { '&' => out.push_str("&amp;"), '<' => out.push_str("&lt;"),
-                  '>' => out.push_str("&gt;"), '"' => out.push_str("&quot;"), _ => out.push(c) }
+        match c {
+            '&' => out.push_str("&amp;"),
+            '<' => out.push_str("&lt;"),
+            '>' => out.push_str("&gt;"),
+            '"' => out.push_str("&quot;"),
+            _ => out.push(c),
+        }
     }
     out
 }
@@ -131,8 +150,8 @@ mod tests {
     #[test]
     fn title_case_works() {
         assert_eq!(title_case("python"), "Python");
-        assert_eq!(title_case("rust"),   "Rust");
-        assert_eq!(title_case(""),       "");
+        assert_eq!(title_case("rust"), "Rust");
+        assert_eq!(title_case(""), "");
     }
 
     #[test]
@@ -146,7 +165,10 @@ mod tests {
     #[test]
     fn solarized_dark_theme_works() {
         let html = highlight("x = 1", "python", "Solarized (dark)");
-        assert!(html.contains("<span"), "Solarized (dark) should produce spans");
+        assert!(
+            html.contains("<span"),
+            "Solarized (dark) should produce spans"
+        );
     }
 
     #[test]

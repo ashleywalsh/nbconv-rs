@@ -11,8 +11,8 @@
 
 use std::collections::HashMap;
 
-use pulldown_cmark::{Event, Options, Parser};
 use pulldown_cmark::html::push_html;
+use pulldown_cmark::{Event, Options, Parser};
 
 // Type alias to avoid repeating the nested HashMap type everywhere.
 type AttMap = HashMap<String, HashMap<String, String>>;
@@ -44,9 +44,7 @@ pub(crate) fn render(source: &str, attachments: Option<&AttMap>) -> String {
 
     // Collect events so the math-adapting closure does not need to outlive
     // the parser iterator.
-    let events: Vec<Event<'_>> = Parser::new_ext(src, opts)
-        .map(adapt_math)
-        .collect();
+    let events: Vec<Event<'_>> = Parser::new_ext(src, opts).map(adapt_math).collect();
 
     let mut html = String::with_capacity(src.len() * 2);
     push_html(&mut html, events.into_iter());
@@ -75,13 +73,7 @@ fn adapt_math(event: Event<'_>) -> Event<'_> {
         Event::DisplayMath(content) => {
             let escaped = html_esc(&content);
             // Rust raw string so we do not have to escape the backslashes.
-            Event::Html(
-                format!(
-                    r#"<div class="math-display">\[{}\]</div>"#,
-                    escaped
-                )
-                .into(),
-            )
+            Event::Html(format!(r#"<div class="math-display">\[{}\]</div>"#, escaped).into())
         }
         other => other,
     }

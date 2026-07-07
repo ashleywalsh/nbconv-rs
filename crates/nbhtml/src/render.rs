@@ -101,8 +101,7 @@ body {
 
 const MATHJAX_CONFIG: &str =
     r#"MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };"#;
-const MATHJAX_CDN: &str =
-    "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js";
+const MATHJAX_CDN: &str = "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js";
 
 impl HtmlDocument {
     pub fn render(&self) -> String {
@@ -112,7 +111,9 @@ impl HtmlDocument {
         write!(out, "<html lang=\"{}\">\n", he(&self.lang)).unwrap();
         out.push_str("<head>\n");
         out.push_str("  <meta charset=\"utf-8\">\n");
-        out.push_str("  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n");
+        out.push_str(
+            "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n",
+        );
         write!(out, "  <title>{}</title>\n", he(&self.title)).unwrap();
         out.push_str("  <style>\n");
         out.push_str(CSS);
@@ -150,9 +151,9 @@ impl HtmlDocument {
 
 fn render_cell(cell: &HtmlCell, out: &mut String) {
     match cell.kind {
-        CellKind::Code     => render_code_cell(cell, out),
+        CellKind::Code => render_code_cell(cell, out),
         CellKind::Markdown => render_markdown_cell(cell, out),
-        CellKind::Raw      => render_raw_cell(cell, out),
+        CellKind::Raw => render_raw_cell(cell, out),
     }
 }
 
@@ -160,15 +161,21 @@ fn render_code_cell(cell: &HtmlCell, out: &mut String) {
     out.push_str("<div class=\"jp-Cell jp-CodeCell jp-Notebook-cell\">\n");
     out.push_str("<div class=\"jp-Cell-inputWrapper\">\n");
     match &cell.input {
-        CellInput::Source { text, prompt, highlighted } => {
-            write!(out,
+        CellInput::Source {
+            text,
+            prompt,
+            highlighted,
+        } => {
+            write!(
+                out,
                 "<div class=\"jp-InputPrompt jp-InputArea-prompt\">{}</div>\n",
                 fmt_in_prompt(*prompt)
-            ).unwrap();
+            )
+            .unwrap();
             out.push_str("<div class=\"jp-InputArea-editor\">\n<pre>");
             match highlighted {
                 Some(html) => out.push_str(html), // syntect inline styles — not re-escaped
-                None       => out.push_str(&he(text)),
+                None => out.push_str(&he(text)),
             }
             out.push_str("</pre>\n</div>\n");
         }
@@ -194,9 +201,7 @@ fn render_code_cell(cell: &HtmlCell, out: &mut String) {
 
 fn render_markdown_cell(cell: &HtmlCell, out: &mut String) {
     out.push_str("<div class=\"jp-Cell jp-MarkdownCell jp-Notebook-cell\">\n");
-    out.push_str(
-        "<div class=\"jp-MarkdownCell jp-RenderedHTMLCommon jp-RenderedMarkdown\">\n",
-    );
+    out.push_str("<div class=\"jp-MarkdownCell jp-RenderedHTMLCommon jp-RenderedMarkdown\">\n");
     if let CellInput::Source { text, .. } = &cell.input {
         let html = crate::markdown::render(text, cell.attachments.as_ref());
         out.push_str(&html);
@@ -217,38 +222,55 @@ fn render_output(output: &CellOutput, out: &mut String) {
     match output {
         CellOutput::Stream { html, stderr } => {
             let extra = if *stderr { " stderr" } else { "" };
-            write!(out,
+            write!(
+                out,
                 "<div class=\"jp-OutputArea-child\">\n\
                  <div class=\"jp-OutputPrompt jp-OutputArea-prompt\"></div>\n\
                  <div class=\"jp-OutputArea-output{extra}\">\
                  <div class=\"jp-RenderedText\"><pre>",
                 extra = extra,
-            ).unwrap();
+            )
+            .unwrap();
             out.push_str(html); // ANSI-processed HTML — not re-escaped
             out.push_str("</pre></div></div>\n</div>\n");
         }
-        CellOutput::Text { html, execution_count } => {
-            write!(out,
+        CellOutput::Text {
+            html,
+            execution_count,
+        } => {
+            write!(
+                out,
                 "<div class=\"jp-OutputArea-child\">\n\
                  <div class=\"jp-OutputPrompt jp-OutputArea-prompt\">{prompt}</div>\n\
                  <div class=\"jp-OutputArea-output jp-RenderedText\"><pre>",
                 prompt = fmt_out_prompt(*execution_count),
-            ).unwrap();
+            )
+            .unwrap();
             out.push_str(html); // ANSI-processed HTML — not re-escaped
             out.push_str("</pre></div>\n</div>\n");
         }
-        CellOutput::Html { html, execution_count } => {
-            write!(out,
+        CellOutput::Html {
+            html,
+            execution_count,
+        } => {
+            write!(
+                out,
                 "<div class=\"jp-OutputArea-child\">\n\
                  <div class=\"jp-OutputPrompt jp-OutputArea-prompt\">{prompt}</div>\n\
                  <div class=\"jp-OutputArea-output jp-RenderedHTML\">\n",
                 prompt = fmt_out_prompt(*execution_count),
-            ).unwrap();
+            )
+            .unwrap();
             out.push_str(html);
             out.push_str("\n</div>\n</div>\n");
         }
-        CellOutput::Image { mime, data, execution_count } => {
-            write!(out,
+        CellOutput::Image {
+            mime,
+            data,
+            execution_count,
+        } => {
+            write!(
+                out,
                 "<div class=\"jp-OutputArea-child\">\n\
                  <div class=\"jp-OutputPrompt jp-OutputArea-prompt\">{prompt}</div>\n\
                  <div class=\"jp-OutputArea-output jp-RenderedImage\">\
@@ -256,28 +278,42 @@ fn render_output(output: &CellOutput, out: &mut String) {
                  </div>\n\
                  </div>\n",
                 prompt = fmt_out_prompt(*execution_count),
-                mime = mime, data = data,
-            ).unwrap();
+                mime = mime,
+                data = data,
+            )
+            .unwrap();
         }
-        CellOutput::Svg { svg, execution_count } => {
-            write!(out,
+        CellOutput::Svg {
+            svg,
+            execution_count,
+        } => {
+            write!(
+                out,
                 "<div class=\"jp-OutputArea-child\">\n\
                  <div class=\"jp-OutputPrompt jp-OutputArea-prompt\">{prompt}</div>\n\
                  <div class=\"jp-OutputArea-output jp-RenderedSVG\">\n",
                 prompt = fmt_out_prompt(*execution_count),
-            ).unwrap();
+            )
+            .unwrap();
             out.push_str(svg);
             out.push_str("\n</div>\n</div>\n");
         }
-        CellOutput::Error { ename, evalue, traceback_html } => {
-            write!(out,
+        CellOutput::Error {
+            ename,
+            evalue,
+            traceback_html,
+        } => {
+            write!(
+                out,
                 "<div class=\"jp-OutputArea-child\">\n\
                  <div class=\"jp-OutputPrompt jp-OutputArea-prompt\"></div>\n\
                  <div class=\"jp-OutputArea-output jp-RenderedText jp-error\">\n\
                  <div class=\"jp-evalue\">{ename}: {evalue}</div>\n\
                  <pre class=\"jp-traceback\">",
-                ename = he(ename), evalue = he(evalue),
-            ).unwrap();
+                ename = he(ename),
+                evalue = he(evalue),
+            )
+            .unwrap();
             out.push_str(traceback_html); // ANSI-processed HTML — not re-escaped
             out.push_str("</pre>\n</div>\n</div>\n");
         }
@@ -288,12 +324,12 @@ fn he(s: &str) -> String {
     let mut out = String::with_capacity(s.len() + 8);
     for c in s.chars() {
         match c {
-            '&'  => out.push_str("&amp;"),
-            '<'  => out.push_str("&lt;"),
-            '>'  => out.push_str("&gt;"),
-            '"'  => out.push_str("&quot;"),
+            '&' => out.push_str("&amp;"),
+            '<' => out.push_str("&lt;"),
+            '>' => out.push_str("&gt;"),
+            '"' => out.push_str("&quot;"),
             '\'' => out.push_str("&#x27;"),
-            _    => out.push(c),
+            _ => out.push(c),
         }
     }
     out
@@ -302,13 +338,13 @@ fn he(s: &str) -> String {
 fn fmt_in_prompt(n: Option<u32>) -> String {
     match n {
         Some(n) => format!("In&nbsp;[{n}]:"),
-        None    => "In&nbsp;[&nbsp;]:".to_string(),
+        None => "In&nbsp;[&nbsp;]:".to_string(),
     }
 }
 
 fn fmt_out_prompt(n: Option<u32>) -> String {
     match n {
         Some(n) => format!("Out[{n}]:"),
-        None    => String::new(),
+        None => String::new(),
     }
 }

@@ -7,8 +7,8 @@ use clap::Parser;
 
 #[derive(Parser)]
 #[command(
-    name    = "nbconv",
-    about   = "Convert a Jupyter notebook (.ipynb) to self-contained HTML",
+    name = "nbconv",
+    about = "Convert a Jupyter notebook (.ipynb) to self-contained HTML",
     version
 )]
 struct Args {
@@ -78,7 +78,10 @@ fn main() {
     };
 
     let notebook = nbformat::parse(&json).unwrap_or_else(|e| {
-        let src = args.input.as_ref().map(|p| p.display().to_string())
+        let src = args
+            .input
+            .as_ref()
+            .map(|p| p.display().to_string())
             .unwrap_or_else(|| "stdin".to_string());
         eprintln!("error: failed to parse {src}: {e}");
         std::process::exit(1);
@@ -88,7 +91,7 @@ fn main() {
     let title = title.as_str();
 
     let opts = nbhtml::HtmlOptions {
-        theme:   args.theme.clone(),
+        theme: args.theme.clone(),
         mathjax: if args.no_mathjax { Some(false) } else { None },
     };
 

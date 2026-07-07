@@ -3,13 +3,8 @@
 use nbformat::{parse, Cell, MimeData, Output, ParseError, StreamName};
 
 fn fixture(name: &str) -> String {
-    let path = format!(
-        "{}/tests/fixtures/{}",
-        env!("CARGO_MANIFEST_DIR"),
-        name
-    );
-    std::fs::read_to_string(&path)
-        .unwrap_or_else(|e| panic!("failed to read fixture {name}: {e}"))
+    let path = format!("{}/tests/fixtures/{}", env!("CARGO_MANIFEST_DIR"), name);
+    std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("failed to read fixture {name}: {e}"))
 }
 
 // ── notebook1.ipynb — SymPy example, nbformat 4.1 ────────────────────────────
@@ -49,9 +44,19 @@ fn notebook1_cell_types() {
 fn notebook1_source_joined_from_array() {
     let nb = parse(&fixture("notebook1.ipynb")).expect("parse notebook1.ipynb");
     // Cell 2 stores source as an array of strings; they must be joined.
-    let Cell::Code(c) = &nb.cells[2] else { panic!("expected Code cell at [2]") };
-    assert!(c.source.contains("from sympy import *"), "source = {:?}", c.source);
-    assert!(c.source.contains("init_printing()"), "source = {:?}", c.source);
+    let Cell::Code(c) = &nb.cells[2] else {
+        panic!("expected Code cell at [2]")
+    };
+    assert!(
+        c.source.contains("from sympy import *"),
+        "source = {:?}",
+        c.source
+    );
+    assert!(
+        c.source.contains("init_printing()"),
+        "source = {:?}",
+        c.source
+    );
     // Each array element already ends with \n, so the joined string has newlines.
     assert!(c.source.contains('\n'), "newlines should be preserved");
 }
@@ -59,11 +64,15 @@ fn notebook1_source_joined_from_array() {
 #[test]
 fn notebook1_execution_count_integer_and_null() {
     let nb = parse(&fixture("notebook1.ipynb")).expect("parse notebook1.ipynb");
-    let Cell::Code(c) = &nb.cells[2] else { panic!() };
+    let Cell::Code(c) = &nb.cells[2] else {
+        panic!()
+    };
     assert_eq!(c.execution_count, Some(2));
 
     // Last cell is unexecuted.
-    let Cell::Code(last) = &nb.cells[9] else { panic!() };
+    let Cell::Code(last) = &nb.cells[9] else {
+        panic!()
+    };
     assert_eq!(last.execution_count, None);
     assert_eq!(last.source, "");
     assert_eq!(last.outputs.len(), 0);
@@ -72,22 +81,37 @@ fn notebook1_execution_count_integer_and_null() {
 #[test]
 fn notebook1_execute_result_mime_types() {
     let nb = parse(&fixture("notebook1.ipynb")).expect("parse notebook1.ipynb");
-    let Cell::Code(c) = &nb.cells[6] else { panic!() };
+    let Cell::Code(c) = &nb.cells[6] else {
+        panic!()
+    };
     assert_eq!(c.outputs.len(), 1);
     let Output::ExecuteResult(o) = &c.outputs[0] else {
         panic!("expected ExecuteResult, got something else")
     };
     assert_eq!(o.execution_count, 6);
-    assert!(o.data.get("image/png").is_some(), "image/png missing from bundle");
-    assert!(o.data.get("text/latex").is_some(), "text/latex missing from bundle");
-    assert!(o.data.get("text/plain").is_some(), "text/plain missing from bundle");
+    assert!(
+        o.data.get("image/png").is_some(),
+        "image/png missing from bundle"
+    );
+    assert!(
+        o.data.get("text/latex").is_some(),
+        "text/latex missing from bundle"
+    );
+    assert!(
+        o.data.get("text/plain").is_some(),
+        "text/plain missing from bundle"
+    );
 }
 
 #[test]
 fn notebook1_text_mime_arrays_joined() {
     let nb = parse(&fixture("notebook1.ipynb")).expect("parse notebook1.ipynb");
-    let Cell::Code(c) = &nb.cells[6] else { panic!() };
-    let Output::ExecuteResult(o) = &c.outputs[0] else { panic!() };
+    let Cell::Code(c) = &nb.cells[6] else {
+        panic!()
+    };
+    let Output::ExecuteResult(o) = &c.outputs[0] else {
+        panic!()
+    };
 
     // text/latex is stored as a single-element array in the fixture.
     let Some(MimeData::String(latex)) = o.data.get("text/latex") else {
@@ -165,9 +189,16 @@ fn notebook3_kernelspec_fields() {
 #[test]
 fn notebook3_language_info_codemirror_mode_is_object() {
     let nb = parse(&fixture("notebook3_kernelspec.ipynb")).unwrap();
-    let li = nb.metadata.language_info.as_ref().expect("language_info missing");
+    let li = nb
+        .metadata
+        .language_info
+        .as_ref()
+        .expect("language_info missing");
     assert_eq!(li.name, "python");
-    let cm = li.codemirror_mode.as_ref().expect("codemirror_mode missing");
+    let cm = li
+        .codemirror_mode
+        .as_ref()
+        .expect("codemirror_mode missing");
     assert!(
         cm.is_object(),
         "codemirror_mode should be a JSON object, got {cm}"
@@ -177,7 +208,9 @@ fn notebook3_language_info_codemirror_mode_is_object() {
 #[test]
 fn notebook3_stream_output_unknown_name_preserved() {
     let nb = parse(&fixture("notebook3_kernelspec.ipynb")).unwrap();
-    let Cell::Code(c) = &nb.cells[0] else { panic!() };
+    let Cell::Code(c) = &nb.cells[0] else {
+        panic!()
+    };
     // The first output is a "stdin" stream (unusual but valid in practice).
     let Output::Stream(s) = &c.outputs[0] else {
         panic!("expected Stream output, got {:?}", c.outputs[0])
@@ -193,7 +226,9 @@ fn notebook3_stream_output_unknown_name_preserved() {
 #[test]
 fn notebook3_execute_result_text_plain() {
     let nb = parse(&fixture("notebook3_kernelspec.ipynb")).unwrap();
-    let Cell::Code(c) = &nb.cells[0] else { panic!() };
+    let Cell::Code(c) = &nb.cells[0] else {
+        panic!()
+    };
     let Output::ExecuteResult(o) = &c.outputs[1] else {
         panic!("expected ExecuteResult at index 1, got {:?}", c.outputs[1])
     };
@@ -255,11 +290,17 @@ fn attachment_cell_has_attachments() {
     let Cell::Markdown(c) = &nb.cells[0] else {
         panic!("cell[0] should be Markdown")
     };
-    let att = c.attachments.as_ref().expect("attachments missing on cell[0]");
+    let att = c
+        .attachments
+        .as_ref()
+        .expect("attachments missing on cell[0]");
     assert!(att.contains_key("image.png"), "'image.png' key missing");
     let img = &att["image.png"];
     assert!(img.contains_key("image/png"), "image/png MIME missing");
-    assert!(!img["image/png"].is_empty(), "base64 attachment data must not be empty");
+    assert!(
+        !img["image/png"].is_empty(),
+        "base64 attachment data must not be empty"
+    );
 }
 
 // ── mixed_markdown.ipynb — smoke test ────────────────────────────────────────
@@ -287,15 +328,19 @@ fn parse_v3_correct_cell_count() {
 #[test]
 fn parse_v3_heading_converted_to_markdown_h1() {
     let nb = parse(&fixture("notebook_v3.ipynb")).unwrap();
-    let Cell::Markdown(m) = &nb.cells[0] else { panic!("cell[0] should be Markdown") };
-    assert!(m.source.starts_with("# "),  "source = {:?}", m.source);
+    let Cell::Markdown(m) = &nb.cells[0] else {
+        panic!("cell[0] should be Markdown")
+    };
+    assert!(m.source.starts_with("# "), "source = {:?}", m.source);
     assert!(m.source.contains("v3 Notebook"), "source = {:?}", m.source);
 }
 
 #[test]
 fn parse_v3_code_cell_input_field_mapped() {
     let nb = parse(&fixture("notebook_v3.ipynb")).unwrap();
-    let Cell::Code(c) = &nb.cells[1] else { panic!("cell[1] should be Code") };
+    let Cell::Code(c) = &nb.cells[1] else {
+        panic!("cell[1] should be Code")
+    };
     assert!(c.source.contains("print"), "source = {:?}", c.source);
     assert_eq!(c.execution_count, Some(1));
 }
@@ -303,8 +348,12 @@ fn parse_v3_code_cell_input_field_mapped() {
 #[test]
 fn parse_v3_stream_output_migrated() {
     let nb = parse(&fixture("notebook_v3.ipynb")).unwrap();
-    let Cell::Code(c) = &nb.cells[1] else { panic!() };
-    let Output::Stream(s) = &c.outputs[0] else { panic!("expected Stream") };
+    let Cell::Code(c) = &nb.cells[1] else {
+        panic!()
+    };
+    let Output::Stream(s) = &c.outputs[0] else {
+        panic!("expected Stream")
+    };
     assert_eq!(s.name, StreamName::Stdout);
     assert!(s.text.contains("hello"), "text = {:?}", s.text);
 }
@@ -312,16 +361,25 @@ fn parse_v3_stream_output_migrated() {
 #[test]
 fn parse_v3_pyout_becomes_execute_result() {
     let nb = parse(&fixture("notebook_v3.ipynb")).unwrap();
-    let Cell::Code(c) = &nb.cells[2] else { panic!() };
-    let Output::ExecuteResult(o) = &c.outputs[0] else { panic!("expected ExecuteResult") };
+    let Cell::Code(c) = &nb.cells[2] else {
+        panic!()
+    };
+    let Output::ExecuteResult(o) = &c.outputs[0] else {
+        panic!("expected ExecuteResult")
+    };
     assert_eq!(o.execution_count, 2);
-    assert!(o.data.get("text/plain").is_some(), "text/plain missing from pyout bundle");
+    assert!(
+        o.data.get("text/plain").is_some(),
+        "text/plain missing from pyout bundle"
+    );
 }
 
 #[test]
 fn parse_v3_markdown_cell_preserved() {
     let nb = parse(&fixture("notebook_v3.ipynb")).unwrap();
-    let Cell::Markdown(m) = &nb.cells[3] else { panic!("cell[3] should be Markdown") };
+    let Cell::Markdown(m) = &nb.cells[3] else {
+        panic!("cell[3] should be Markdown")
+    };
     assert!(m.source.contains("markdown"), "source = {:?}", m.source);
 }
 
@@ -335,7 +393,10 @@ fn parse_v1_returns_unsupported_error() {
         matches!(err, ParseError::UnsupportedVersion(1)),
         "expected UnsupportedVersion(1), got {err}"
     );
-    assert!(err.to_string().contains("v1"), "message should mention v1: {err}");
+    assert!(
+        err.to_string().contains("v1"),
+        "message should mention v1: {err}"
+    );
     assert!(err.to_string().contains("not supported"), "message: {err}");
 }
 
@@ -347,7 +408,10 @@ fn parse_v2_returns_unsupported_error() {
         matches!(err, ParseError::UnsupportedVersion(2)),
         "expected UnsupportedVersion(2), got {err}"
     );
-    assert!(err.to_string().contains("v2"), "message should mention v2: {err}");
+    assert!(
+        err.to_string().contains("v2"),
+        "message should mention v2: {err}"
+    );
 }
 
 #[test]

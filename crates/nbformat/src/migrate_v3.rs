@@ -16,8 +16,8 @@ use serde_json::Value;
 use crate::de::join_multiline;
 use crate::{
     Cell, CellMetadata, CodeCell, DisplayDataOutput, ErrorOutput, ExecuteResultOutput,
-    MarkdownCell, MimeBundle, MimeData, Notebook, NotebookMetadata, Output, RawCell,
-    StreamName, StreamOutput,
+    MarkdownCell, MimeBundle, MimeData, Notebook, NotebookMetadata, Output, RawCell, StreamName,
+    StreamOutput,
 };
 
 /// Convert an already-parsed v3 notebook `Value` into a v4 [`Notebook`].
@@ -95,11 +95,8 @@ fn migrate_cell(cell: &Value) -> Option<Cell> {
             }))
         }
         "markdown" => {
-            let source = join_multiline(
-                cell.get("source")
-                    .cloned()
-                    .unwrap_or(Value::Array(vec![])),
-            );
+            let source =
+                join_multiline(cell.get("source").cloned().unwrap_or(Value::Array(vec![])));
             Some(Cell::Markdown(MarkdownCell {
                 id: None,
                 source,
@@ -108,11 +105,8 @@ fn migrate_cell(cell: &Value) -> Option<Cell> {
             }))
         }
         "raw" => {
-            let source = join_multiline(
-                cell.get("source")
-                    .cloned()
-                    .unwrap_or(Value::Array(vec![])),
-            );
+            let source =
+                join_multiline(cell.get("source").cloned().unwrap_or(Value::Array(vec![])));
             Some(Cell::Raw(RawCell {
                 id: None,
                 source,
@@ -127,11 +121,7 @@ fn migrate_cell(cell: &Value) -> Option<Cell> {
                 .and_then(|l| l.as_u64())
                 .unwrap_or(1)
                 .clamp(1, 6) as usize;
-            let text = join_multiline(
-                cell.get("source")
-                    .cloned()
-                    .unwrap_or(Value::Array(vec![])),
-            );
+            let text = join_multiline(cell.get("source").cloned().unwrap_or(Value::Array(vec![])));
             let source = format!("{} {}", "#".repeat(level), text.trim_end_matches('\n'));
             Some(Cell::Markdown(MarkdownCell {
                 id: None,
@@ -164,20 +154,25 @@ fn migrate_output(output: &Value) -> Option<Output> {
             traceback: output
                 .get("traceback")
                 .and_then(|t| t.as_array())
-                .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_str().map(String::from))
+                        .collect()
+                })
                 .unwrap_or_default(),
         })),
         "stream" => {
             // v3 "stream" field → v4 "name" field
-            let raw = output.get("stream").and_then(|s| s.as_str()).unwrap_or("stdout");
+            let raw = output
+                .get("stream")
+                .and_then(|s| s.as_str())
+                .unwrap_or("stdout");
             let name = match raw {
                 "stdout" => StreamName::Stdout,
                 "stderr" => StreamName::Stderr,
-                other    => StreamName::Other(other.to_string()),
+                other => StreamName::Other(other.to_string()),
             };
-            let text = join_multiline(
-                output.get("text").cloned().unwrap_or(Value::Array(vec![])),
-            );
+            let text = join_multiline(output.get("text").cloned().unwrap_or(Value::Array(vec![])));
             Some(Output::Stream(StreamOutput { name, text }))
         }
         "display_data" => Some(Output::DisplayData(DisplayDataOutput {
@@ -191,20 +186,22 @@ fn migrate_output(output: &Value) -> Option<Output> {
 /// Map v3 per-type output fields to their v4 MIME-type equivalents.
 fn build_mime_bundle(output: &Value) -> MimeBundle {
     const MAP: &[(&str, &str)] = &[
-        ("text",       "text/plain"),
-        ("html",       "text/html"),
-        ("svg",        "image/svg+xml"),
-        ("png",        "image/png"),
-        ("jpeg",       "image/jpeg"),
-        ("latex",      "text/latex"),
-        ("json",       "application/json"),
+        ("text", "text/plain"),
+        ("html", "text/html"),
+        ("svg", "image/svg+xml"),
+        ("png", "image/png"),
+        ("jpeg", "image/jpeg"),
+        ("latex", "text/latex"),
+        ("json", "application/json"),
         ("javascript", "application/javascript"),
-        ("pdf",        "application/pdf"),
+        ("pdf", "application/pdf"),
     ];
     let mut idx = IndexMap::new();
     for (v3_key, mime) in MAP {
         if let Some(val) = output.get(v3_key) {
-            if val.is_null() { continue; }
+            if val.is_null() {
+                continue;
+            }
             let data = if *mime == "application/json" {
                 MimeData::Json(val.clone())
             } else {
@@ -217,5 +214,8 @@ fn build_mime_bundle(output: &Value) -> MimeBundle {
 }
 
 fn string_field(v: &Value, key: &str) -> String {
-    v.get(key).and_then(|s| s.as_str()).unwrap_or("").to_string()
+    v.get(key)
+        .and_then(|s| s.as_str())
+        .unwrap_or("")
+        .to_string()
 }
