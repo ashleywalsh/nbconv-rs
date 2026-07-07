@@ -2,6 +2,7 @@
 name = "nbformat"
 version = "0.1.0"
 edition = "2021"
+license.workspace = true
 description = "Strongly-typed Jupyter notebook (nbformat v4) deserialisation"
 
 [dependencies]
