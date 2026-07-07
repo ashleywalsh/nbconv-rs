@@ -6,6 +6,7 @@ description = "Transform parsed Jupyter notebooks into typed HTML document struc
 
 [dependencies]
 nbformat       = { path = "../nbformat" }
+maud           = "0.26"
 pulldown-cmark = "0.13"
 syntect        = "5"
 

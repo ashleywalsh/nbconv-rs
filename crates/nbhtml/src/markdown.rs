@@ -66,12 +66,12 @@ fn adapt_math(event: Event<'_>) -> Event<'_> {
     match event {
         // $...$  →  \(...\)
         Event::InlineMath(content) => {
-            let escaped = html_esc(&content);
+            let escaped = crate::html_esc(&content);
             Event::Html(format!("\\({}\\)", escaped).into())
         }
         // $$...$$ or fenced math  →  \[...\]
         Event::DisplayMath(content) => {
-            let escaped = html_esc(&content);
+            let escaped = crate::html_esc(&content);
             // Rust raw string so we do not have to escape the backslashes.
             Event::Html(format!(r#"<div class="math-display">\[{}\]</div>"#, escaped).into())
         }
@@ -108,24 +108,6 @@ fn pick_data_uri(mime_map: &HashMap<String, String>) -> Option<String> {
 }
 
 // ── HTML escape for math content ──────────────────────────────────────────────
-
-/// HTML-escape the three characters that are meaningful in text content.
-///
-/// `"` and `'` are left unescaped because they appear inside attributes only
-/// when the attribute value itself comes from user input — not applicable here.
-fn html_esc(s: &str) -> String {
-    let mut out = String::with_capacity(s.len());
-    for c in s.chars() {
-        match c {
-            '&' => out.push_str("&amp;"),
-            '<' => out.push_str("&lt;"),
-            '>' => out.push_str("&gt;"),
-            other => out.push(other),
-        }
-    }
-    out
-}
-
 // ── Unit tests ────────────────────────────────────────────────────────────────
 
 #[cfg(test)]

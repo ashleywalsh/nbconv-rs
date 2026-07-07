@@ -303,7 +303,7 @@ fn push_span(
     underline: bool,
     inverse: bool,
 ) {
-    let esc = html_esc(text);
+    let esc = crate::html_esc(text);
 
     if !has_style(fg, bg, bold, underline, inverse) {
         out.push_str(&esc);
@@ -395,20 +395,6 @@ fn idx_rgb(idx: u8) -> (u8, u8, u8) {
         let v = (idx - 232) * 10 + 8;
         (v, v, v)
     }
-}
-
-/// HTML-escape the three characters meaningful in element text content.
-fn html_esc(s: &str) -> String {
-    let mut out = String::with_capacity(s.len());
-    for c in s.chars() {
-        match c {
-            '&' => out.push_str("&amp;"),
-            '<' => out.push_str("&lt;"),
-            '>' => out.push_str("&gt;"),
-            _ => out.push(c),
-        }
-    }
-    out
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────

@@ -148,6 +148,27 @@ pub fn from_notebook_with_options(
     build(nb, title.into(), opts)
 }
 
+// ── Shared utilities ────────────────────────────────────────────────────────
+
+/// HTML-escape characters meaningful in text content and attribute values.
+///
+/// Escapes `&`, `<`, `>`, and `"`. Single quotes are left alone because they
+/// only need escaping inside single-quoted attribute values, which we do not
+/// generate anywhere in this crate.
+pub(crate) fn html_esc(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for c in s.chars() {
+        match c {
+            '&' => out.push_str("&amp;"),
+            '<' => out.push_str("&lt;"),
+            '>' => out.push_str("&gt;"),
+            '"' => out.push_str("&quot;"),
+            _ => out.push(c),
+        }
+    }
+    out
+}
+
 // ── Internal ──────────────────────────────────────────────────────────────────
 
 fn build(nb: &Notebook, title: String, opts: &HtmlOptions) -> HtmlDocument {

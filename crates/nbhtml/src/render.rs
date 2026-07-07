@@ -1,6 +1,6 @@
 //! Serialise an [`HtmlDocument`] to a complete, self-contained HTML page.
 
-use std::fmt::Write as FmtWrite;
+use maud::{html, Markup, PreEscaped, DOCTYPE};
 
 use crate::{CellInput, CellKind, CellOutput, HtmlCell, HtmlDocument};
 
@@ -105,246 +105,215 @@ const MATHJAX_CDN: &str = "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.
 
 impl HtmlDocument {
     pub fn render(&self) -> String {
-        let mut out = String::with_capacity(64 * 1024);
-
-        out.push_str("<!DOCTYPE html>\n");
-        write!(out, "<html lang=\"{}\">\n", he(&self.lang)).unwrap();
-        out.push_str("<head>\n");
-        out.push_str("  <meta charset=\"utf-8\">\n");
-        out.push_str(
-            "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n",
-        );
-        write!(out, "  <title>{}</title>\n", he(&self.title)).unwrap();
-        out.push_str("  <style>\n");
-        out.push_str(CSS);
-        out.push_str("  </style>\n");
-
-        if self.inject_ansi_css {
-            out.push_str("  <style>\n");
-            out.push_str(crate::ansi::CSS);
-            out.push_str("  </style>\n");
-        }
-
-        if self.inject_mathjax {
-            out.push_str("  <script>\n  ");
-            out.push_str(MATHJAX_CONFIG);
-            out.push_str("\n  </script>\n");
-            write!(
-                out,
-                "  <script type=\"text/javascript\" id=\"MathJax-script\" async src=\"{}\"></script>\n",
-                MATHJAX_CDN
-            ).unwrap();
-        }
-
-        out.push_str("</head>\n<body>\n");
-        out.push_str(
-            "<div class=\"jp-Notebook\" data-jp-theme-light=\"true\" \
-             data-jp-theme-name=\"JupyterLab Light\">\n",
-        );
-        for cell in &self.cells {
-            render_cell(cell, &mut out);
-        }
-        out.push_str("</div>\n</body>\n</html>\n");
-        out
-    }
-}
-
-fn render_cell(cell: &HtmlCell, out: &mut String) {
-    match cell.kind {
-        CellKind::Code => render_code_cell(cell, out),
-        CellKind::Markdown => render_markdown_cell(cell, out),
-        CellKind::Raw => render_raw_cell(cell, out),
-    }
-}
-
-fn render_code_cell(cell: &HtmlCell, out: &mut String) {
-    out.push_str("<div class=\"jp-Cell jp-CodeCell jp-Notebook-cell\">\n");
-    out.push_str("<div class=\"jp-Cell-inputWrapper\">\n");
-    match &cell.input {
-        CellInput::Source {
-            text,
-            prompt,
-            highlighted,
-        } => {
-            write!(
-                out,
-                "<div class=\"jp-InputPrompt jp-InputArea-prompt\">{}</div>\n",
-                fmt_in_prompt(*prompt)
-            )
-            .unwrap();
-            out.push_str("<div class=\"jp-InputArea-editor\">\n<pre>");
-            match highlighted {
-                Some(html) => out.push_str(html), // syntect inline styles — not re-escaped
-                None => out.push_str(&he(text)),
+        html! {
+            (DOCTYPE)
+            html lang=(self.lang) {
+                head {
+                    meta charset="utf-8";
+                    meta name="viewport" content="width=device-width, initial-scale=1";
+                    title { (self.title) }
+                    style { (PreEscaped(CSS)) }
+                    @if self.inject_ansi_css {
+                        style { (PreEscaped(crate::ansi::CSS)) }
+                    }
+                    @if self.inject_mathjax {
+                        script { (PreEscaped(MATHJAX_CONFIG)) }
+                        script type="text/javascript" id="MathJax-script"
+                            "async"="" src=(MATHJAX_CDN) {}
+                    }
+                }
+                body {
+                    div class="jp-Notebook"
+                        "data-jp-theme-light"="true"
+                        "data-jp-theme-name"="JupyterLab Light"
+                    {
+                        @for cell in &self.cells {
+                            (render_cell(cell))
+                        }
+                    }
+                }
             }
-            out.push_str("</pre>\n</div>\n");
         }
-        CellInput::Empty => {
-            out.push_str(
-                "<div class=\"jp-InputPrompt jp-InputArea-prompt\">In&nbsp;[&nbsp;]:</div>\n",
-            );
-            out.push_str("<div class=\"jp-InputArea-editor\"><pre></pre></div>\n");
-        }
+        .into_string()
     }
-    out.push_str("</div>\n"); // inputWrapper
-
-    if !cell.outputs.is_empty() {
-        out.push_str("<div class=\"jp-Cell-outputWrapper\">\n");
-        out.push_str("<div class=\"jp-OutputArea jp-Cell-outputArea\">\n");
-        for output in &cell.outputs {
-            render_output(output, out);
-        }
-        out.push_str("</div>\n</div>\n");
-    }
-    out.push_str("</div>\n"); // Cell
 }
 
-fn render_markdown_cell(cell: &HtmlCell, out: &mut String) {
-    out.push_str("<div class=\"jp-Cell jp-MarkdownCell jp-Notebook-cell\">\n");
-    out.push_str("<div class=\"jp-MarkdownCell jp-RenderedHTMLCommon jp-RenderedMarkdown\">\n");
-    if let CellInput::Source { text, .. } = &cell.input {
-        let html = crate::markdown::render(text, cell.attachments.as_ref());
-        out.push_str(&html);
+fn render_cell(cell: &HtmlCell) -> Markup {
+    match cell.kind {
+        CellKind::Code => render_code_cell(cell),
+        CellKind::Markdown => render_markdown_cell(cell),
+        CellKind::Raw => render_raw_cell(cell),
     }
-    out.push_str("</div>\n</div>\n");
 }
 
-fn render_raw_cell(cell: &HtmlCell, out: &mut String) {
-    out.push_str("<div class=\"jp-Cell jp-RawCell jp-Notebook-cell\">\n");
-    out.push_str("<div class=\"jp-RawCell\">\n");
-    if let CellInput::Source { text, .. } = &cell.input {
-        write!(out, "<pre>{}</pre>\n", he(text)).unwrap();
+fn render_code_cell(cell: &HtmlCell) -> Markup {
+    html! {
+        div class="jp-Cell jp-CodeCell jp-Notebook-cell" {
+            div class="jp-Cell-inputWrapper" {
+                @match &cell.input {
+                    CellInput::Source { text, prompt, highlighted } => {
+                        div class="jp-InputPrompt jp-InputArea-prompt" {
+                            (in_prompt(*prompt))
+                        }
+                        div class="jp-InputArea-editor" {
+                            pre {
+                                @if let Some(html) = highlighted {
+                                    (PreEscaped(html))  // syntect inline styles — not re-escaped
+                                } @else {
+                                    (text)
+                                }
+                            }
+                        }
+                    }
+                    CellInput::Empty => {
+                        div class="jp-InputPrompt jp-InputArea-prompt" {
+                            (PreEscaped("In&nbsp;[&nbsp;]:"))
+                        }
+                        div class="jp-InputArea-editor" { pre {} }
+                    }
+                }
+            }
+            @if !cell.outputs.is_empty() {
+                div class="jp-Cell-outputWrapper" {
+                    div class="jp-OutputArea jp-Cell-outputArea" {
+                        @for output in &cell.outputs {
+                            (render_output(output))
+                        }
+                    }
+                }
+            }
+        }
     }
-    out.push_str("</div>\n</div>\n");
 }
 
-fn render_output(output: &CellOutput, out: &mut String) {
+fn render_markdown_cell(cell: &HtmlCell) -> Markup {
+    let content = match &cell.input {
+        CellInput::Source { text, .. } => {
+            Some(crate::markdown::render(text, cell.attachments.as_ref()))
+        }
+        CellInput::Empty => None,
+    };
+    html! {
+        div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" {
+            div class="jp-MarkdownCell jp-RenderedHTMLCommon jp-RenderedMarkdown" {
+                @if let Some(rendered) = content {
+                    (PreEscaped(rendered))
+                }
+            }
+        }
+    }
+}
+
+fn render_raw_cell(cell: &HtmlCell) -> Markup {
+    let text = match &cell.input {
+        CellInput::Source { text, .. } => Some(text.as_str()),
+        CellInput::Empty => None,
+    };
+    html! {
+        div class="jp-Cell jp-RawCell jp-Notebook-cell" {
+            div class="jp-RawCell" {
+                @if let Some(text) = text {
+                    pre { (text) }
+                }
+            }
+        }
+    }
+}
+
+fn render_output(output: &CellOutput) -> Markup {
     match output {
         CellOutput::Stream { html, stderr } => {
-            let extra = if *stderr { " stderr" } else { "" };
-            write!(
-                out,
-                "<div class=\"jp-OutputArea-child\">\n\
-                 <div class=\"jp-OutputPrompt jp-OutputArea-prompt\"></div>\n\
-                 <div class=\"jp-OutputArea-output{extra}\">\
-                 <div class=\"jp-RenderedText\"><pre>",
-                extra = extra,
-            )
-            .unwrap();
-            out.push_str(html); // ANSI-processed HTML — not re-escaped
-            out.push_str("</pre></div></div>\n</div>\n");
+            let cls = if *stderr { "jp-OutputArea-output stderr" } else { "jp-OutputArea-output" };
+            html! {
+                div class="jp-OutputArea-child" {
+                    div class="jp-OutputPrompt jp-OutputArea-prompt" {}
+                    div class=(cls) {
+                        div class="jp-RenderedText" {
+                            pre { (PreEscaped(html)) }  // ANSI-processed HTML — not re-escaped
+                        }
+                    }
+                }
+            }
         }
         CellOutput::Text {
             html,
             execution_count,
-        } => {
-            write!(
-                out,
-                "<div class=\"jp-OutputArea-child\">\n\
-                 <div class=\"jp-OutputPrompt jp-OutputArea-prompt\">{prompt}</div>\n\
-                 <div class=\"jp-OutputArea-output jp-RenderedText\"><pre>",
-                prompt = fmt_out_prompt(*execution_count),
-            )
-            .unwrap();
-            out.push_str(html); // ANSI-processed HTML — not re-escaped
-            out.push_str("</pre></div>\n</div>\n");
-        }
+        } => html! {
+            div class="jp-OutputArea-child" {
+                div class="jp-OutputPrompt jp-OutputArea-prompt" { (out_prompt(*execution_count)) }
+                div class="jp-OutputArea-output jp-RenderedText" {
+                    pre { (PreEscaped(html)) }  // ANSI-processed HTML — not re-escaped
+                }
+            }
+        },
         CellOutput::Html {
             html,
             execution_count,
-        } => {
-            write!(
-                out,
-                "<div class=\"jp-OutputArea-child\">\n\
-                 <div class=\"jp-OutputPrompt jp-OutputArea-prompt\">{prompt}</div>\n\
-                 <div class=\"jp-OutputArea-output jp-RenderedHTML\">\n",
-                prompt = fmt_out_prompt(*execution_count),
-            )
-            .unwrap();
-            out.push_str(html);
-            out.push_str("\n</div>\n</div>\n");
-        }
+        } => html! {
+            div class="jp-OutputArea-child" {
+                div class="jp-OutputPrompt jp-OutputArea-prompt" { (out_prompt(*execution_count)) }
+                div class="jp-OutputArea-output jp-RenderedHTML" {
+                    (PreEscaped(html))
+                }
+            }
+        },
         CellOutput::Image {
             mime,
             data,
             execution_count,
         } => {
-            write!(
-                out,
-                "<div class=\"jp-OutputArea-child\">\n\
-                 <div class=\"jp-OutputPrompt jp-OutputArea-prompt\">{prompt}</div>\n\
-                 <div class=\"jp-OutputArea-output jp-RenderedImage\">\
-                 <img src=\"data:{mime};base64,{data}\" alt=\"\">\
-                 </div>\n\
-                 </div>\n",
-                prompt = fmt_out_prompt(*execution_count),
-                mime = mime,
-                data = data,
-            )
-            .unwrap();
+            let src = format!("data:{mime};base64,{data}");
+            html! {
+                div class="jp-OutputArea-child" {
+                    div class="jp-OutputPrompt jp-OutputArea-prompt" { (out_prompt(*execution_count)) }
+                    div class="jp-OutputArea-output jp-RenderedImage" {
+                        img src=(src) alt="" {}
+                    }
+                }
+            }
         }
         CellOutput::Svg {
             svg,
             execution_count,
-        } => {
-            write!(
-                out,
-                "<div class=\"jp-OutputArea-child\">\n\
-                 <div class=\"jp-OutputPrompt jp-OutputArea-prompt\">{prompt}</div>\n\
-                 <div class=\"jp-OutputArea-output jp-RenderedSVG\">\n",
-                prompt = fmt_out_prompt(*execution_count),
-            )
-            .unwrap();
-            out.push_str(svg);
-            out.push_str("\n</div>\n</div>\n");
-        }
+        } => html! {
+            div class="jp-OutputArea-child" {
+                div class="jp-OutputPrompt jp-OutputArea-prompt" { (out_prompt(*execution_count)) }
+                div class="jp-OutputArea-output jp-RenderedSVG" {
+                    (PreEscaped(svg))
+                }
+            }
+        },
         CellOutput::Error {
             ename,
             evalue,
             traceback_html,
-        } => {
-            write!(
-                out,
-                "<div class=\"jp-OutputArea-child\">\n\
-                 <div class=\"jp-OutputPrompt jp-OutputArea-prompt\"></div>\n\
-                 <div class=\"jp-OutputArea-output jp-RenderedText jp-error\">\n\
-                 <div class=\"jp-evalue\">{ename}: {evalue}</div>\n\
-                 <pre class=\"jp-traceback\">",
-                ename = he(ename),
-                evalue = he(evalue),
-            )
-            .unwrap();
-            out.push_str(traceback_html); // ANSI-processed HTML — not re-escaped
-            out.push_str("</pre>\n</div>\n</div>\n");
-        }
+        } => html! {
+            div class="jp-OutputArea-child" {
+                div class="jp-OutputPrompt jp-OutputArea-prompt" {}
+                div class="jp-OutputArea-output jp-RenderedText jp-error" {
+                    div class="jp-evalue" { (ename) ": " (evalue) }  // auto-escaped
+                    pre class="jp-traceback" {
+                        (PreEscaped(traceback_html))  // ANSI-processed HTML — not re-escaped
+                    }
+                }
+            }
+        },
     }
 }
 
-fn he(s: &str) -> String {
-    let mut out = String::with_capacity(s.len() + 8);
-    for c in s.chars() {
-        match c {
-            '&' => out.push_str("&amp;"),
-            '<' => out.push_str("&lt;"),
-            '>' => out.push_str("&gt;"),
-            '"' => out.push_str("&quot;"),
-            '\'' => out.push_str("&#x27;"),
-            _ => out.push(c),
-        }
-    }
-    out
-}
-
-fn fmt_in_prompt(n: Option<u32>) -> String {
+/// Render an input prompt, e.g. `In [1]:`. Contains `&nbsp;` entities so must
+/// be wrapped in [`PreEscaped`].
+fn in_prompt(n: Option<u32>) -> Markup {
     match n {
-        Some(n) => format!("In&nbsp;[{n}]:"),
-        None => "In&nbsp;[&nbsp;]:".to_string(),
+        Some(n) => PreEscaped(format!("In&nbsp;[{n}]:")),
+        None => PreEscaped("In&nbsp;[&nbsp;]:".to_string()),
     }
 }
 
-fn fmt_out_prompt(n: Option<u32>) -> String {
+/// Render an output prompt, e.g. `Out[1]:`, or nothing for `None`.
+fn out_prompt(n: Option<u32>) -> Markup {
     match n {
-        Some(n) => format!("Out[{n}]:"),
-        None => String::new(),
+        Some(n) => PreEscaped(format!("Out[{n}]:")),
+        None => PreEscaped(String::new()),
     }
 }

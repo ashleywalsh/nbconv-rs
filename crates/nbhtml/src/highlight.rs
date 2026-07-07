@@ -38,7 +38,7 @@ pub(crate) fn highlight(source: &str, language: &str, theme: &str) -> String {
     let syn = find_syntax(ss, language);
     match highlighted_html_for_string(source, ss, syn, resolve_theme(theme)) {
         Ok(html) => strip_pre_wrapper(&html),
-        Err(_) => plain_escape(source),
+        Err(_) => crate::html_esc(source),
     }
 }
 
@@ -103,20 +103,6 @@ fn strip_pre_wrapper(html: &str) -> String {
     html[start..end].to_string()
 }
 
-fn plain_escape(s: &str) -> String {
-    let mut out = String::with_capacity(s.len());
-    for c in s.chars() {
-        match c {
-            '&' => out.push_str("&amp;"),
-            '<' => out.push_str("&lt;"),
-            '>' => out.push_str("&gt;"),
-            '"' => out.push_str("&quot;"),
-            _ => out.push(c),
-        }
-    }
-    out
-}
-
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -143,7 +129,7 @@ mod tests {
 
     #[test]
     fn special_chars_escaped_in_fallback() {
-        let e = plain_escape("<b>bold</b> & \"q\"");
+        let e = crate::html_esc("<b>bold</b> & \"q\"");
         assert!(e.contains("&lt;b&gt;") && e.contains("&amp;") && e.contains("&quot;"));
     }
 
