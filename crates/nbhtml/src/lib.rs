@@ -31,10 +31,10 @@ pub struct HtmlOptions {
     pub theme: String,
     /// Override MathJax injection.
     ///
-    /// * `None`         – auto-detect: inject only when a markdown cell
-    ///                    contains `$`, `\[`, or `\(`.
-    /// * `Some(true)`   – always inject (force online math rendering).
-    /// * `Some(false)`  – never inject (fully offline output).
+    /// * `None` – auto-detect: inject only when a markdown cell
+    ///   contains `$`, `\[`, or `\(`.
+    /// * `Some(true)` – always inject (force online math rendering).
+    /// * `Some(false)` – never inject (fully offline output).
     pub mathjax: Option<bool>,
 }
 
