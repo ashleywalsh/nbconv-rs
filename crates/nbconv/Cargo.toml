@@ -1,8 +1,9 @@
 [package]
 name = "nbconv"
 version = "0.1.0"
-edition = "2021"
-license.workspace = true
+edition.workspace    = true
+license.workspace    = true
+repository.workspace = true
 description = "Convert Jupyter notebooks to HTML"
 
 [[bin]]

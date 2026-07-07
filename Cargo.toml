@@ -3,4 +3,6 @@ members  = ["crates/nbformat", "crates/nbhtml", "crates/nbconv"]
 resolver = "2"
 
 [workspace.package]
-license = "MIT"
+edition    = "2021"
+license    = "MIT"
+repository = "https://github.com/ashleywalsh/nbconv-rs"
