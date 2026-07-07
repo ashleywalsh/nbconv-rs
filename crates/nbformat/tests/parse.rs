@@ -1,6 +1,6 @@
 //! Integration tests: parse real `.ipynb` fixture files and assert structure.
 
-use nbformat::{parse, Cell, MimeData, Output, StreamName};
+use nbformat::{parse, Cell, MimeData, Output, ParseError, StreamName};
 
 fn fixture(name: &str) -> String {
     let path = format!(
@@ -323,4 +323,39 @@ fn parse_v3_markdown_cell_preserved() {
     let nb = parse(&fixture("notebook_v3.ipynb")).unwrap();
     let Cell::Markdown(m) = &nb.cells[3] else { panic!("cell[3] should be Markdown") };
     assert!(m.source.contains("markdown"), "source = {:?}", m.source);
+}
+
+// ── v1 / v2 — explicit unsupported-version errors ────────────────────────────
+
+#[test]
+fn parse_v1_returns_unsupported_error() {
+    let json = r#"{"nbformat": 1, "cells": []}"#;
+    let err = parse(json).unwrap_err();
+    assert!(
+        matches!(err, ParseError::UnsupportedVersion(1)),
+        "expected UnsupportedVersion(1), got {err}"
+    );
+    assert!(err.to_string().contains("v1"), "message should mention v1: {err}");
+    assert!(err.to_string().contains("not supported"), "message: {err}");
+}
+
+#[test]
+fn parse_v2_returns_unsupported_error() {
+    let json = r#"{"nbformat": 2, "worksheets": []}"#;
+    let err = parse(json).unwrap_err();
+    assert!(
+        matches!(err, ParseError::UnsupportedVersion(2)),
+        "expected UnsupportedVersion(2), got {err}"
+    );
+    assert!(err.to_string().contains("v2"), "message should mention v2: {err}");
+}
+
+#[test]
+fn parse_v3_still_succeeds() {
+    parse(&fixture("notebook_v3.ipynb")).expect("v3 must be supported");
+}
+
+#[test]
+fn parse_v4_still_succeeds() {
+    parse(&fixture("notebook1.ipynb")).expect("v4 must be supported");
 }

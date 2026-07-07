@@ -1,8 +1,15 @@
-//! Strongly-typed in-memory representation of Jupyter notebooks (nbformat v4).
+//! Strongly-typed in-memory representation of Jupyter notebooks.
 //!
 //! The public entry point is [`parse`], which accepts the JSON text of an
-//! `.ipynb` file and returns a [`Notebook`].  nbformat v3 notebooks are
-//! automatically migrated to the v4 structure before being returned.
+//! `.ipynb` file and returns a [`Notebook`].
+//!
+//! ## Supported versions
+//!
+//! | nbformat | Status |
+//! |----------|--------|
+//! | 4.x      | fully supported (direct deserialisation) |
+//! | 3.x      | supported via automatic migration to v4   |
+//! | 1, 2     | **not supported** — [`parse`] returns [`ParseError::UnsupportedVersion`] |
 
 pub(crate) mod de;
 mod migrate_v3;
@@ -14,24 +21,68 @@ use indexmap::IndexMap;
 use serde::{Deserialize, Deserializer};
 use serde_json::Value;
 
+// ── Error type ────────────────────────────────────────────────────────────────
+
+/// Errors returned by [`parse`].
+#[derive(Debug)]
+pub enum ParseError {
+    /// The input is not valid JSON, or does not match the expected notebook
+    /// structure.
+    Json(serde_json::Error),
+    /// The notebook uses an nbformat version that is not supported.
+    ///
+    /// Only versions **3** and **4** are supported.  Versions 1 and 2 predate
+    /// Jupyter and are too rare to warrant a migration path; use the Python
+    /// `nbformat` library to upgrade them first.
+    UnsupportedVersion(u64),
+}
+
+impl fmt::Display for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ParseError::Json(e) => write!(f, "{e}"),
+            ParseError::UnsupportedVersion(v) => write!(
+                f,
+                "nbformat v{v} is not supported \
+                 (only v3 and v4 are supported; \
+                 use the Python `nbformat` library to upgrade this notebook first)"
+            ),
+        }
+    }
+}
+
+impl std::error::Error for ParseError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            ParseError::Json(e) => Some(e),
+            ParseError::UnsupportedVersion(_) => None,
+        }
+    }
+}
+
+impl From<serde_json::Error> for ParseError {
+    fn from(e: serde_json::Error) -> Self {
+        ParseError::Json(e)
+    }
+}
+
 // ── Entry point ───────────────────────────────────────────────────────────────
 
 /// Parse an `.ipynb` JSON string into a [`Notebook`].
 ///
-/// * **nbformat 4** notebooks are deserialised directly.
-/// * **nbformat 3** (and older) notebooks are migrated to v4 first.
-pub fn parse(json: &str) -> Result<Notebook, serde_json::Error> {
-    // Parse once to inspect the version, then convert.
+/// Returns [`ParseError::UnsupportedVersion`] for nbformat versions 1 and 2.
+/// nbformat v3 notebooks are automatically migrated to v4.
+pub fn parse(json: &str) -> Result<Notebook, ParseError> {
     let value: Value = serde_json::from_str(json)?;
     let nbformat = value
         .get("nbformat")
         .and_then(|v| v.as_u64())
         .unwrap_or(4);
 
-    if nbformat < 4 {
-        migrate_v3::from_value(value)
-    } else {
-        serde_json::from_value(value)
+    match nbformat {
+        1 | 2 => Err(ParseError::UnsupportedVersion(nbformat)),
+        3     => migrate_v3::from_value(value).map_err(ParseError::Json),
+        _     => serde_json::from_value(value).map_err(ParseError::Json),
     }
 }
 
