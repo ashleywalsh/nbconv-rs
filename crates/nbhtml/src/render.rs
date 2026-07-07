@@ -100,10 +100,11 @@ body {
 ";
 
 const MATHJAX_CONFIG: &str =
-    r#"MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };"#;
+    r"MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };";
 const MATHJAX_CDN: &str = "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js";
 
 impl HtmlDocument {
+    #[must_use]
     pub fn render(&self) -> String {
         html! {
             (DOCTYPE)

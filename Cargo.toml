@@ -6,3 +6,9 @@ resolver = "2"
 edition    = "2021"
 license    = "MIT"
 repository = "https://github.com/ashleywalsh/nbconv-rs"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+pedantic = "warn"

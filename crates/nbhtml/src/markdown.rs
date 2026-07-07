@@ -1,9 +1,9 @@
 //! Render Markdown to an HTML fragment using pulldown-cmark.
 //!
-//! Two Jupyter-specific concerns are handled on top of the CommonMark baseline:
+//! Two Jupyter-specific concerns are handled on top of the `CommonMark` baseline:
 //!
 //! **Math** — `$...$` (inline) and `$$...$$` (display) are converted to the
-//! MathJax 3 delimiters `\(...\)` / `\[...\]`.  The content is HTML-escaped so
+//! `MathJax` 3 delimiters `\(...\)` / `\[...\]`.  The content is HTML-escaped so
 //! that TeX expressions containing `<`, `>`, or `&` round-trip correctly.
 //!
 //! **Attachments** — `attachment:filename` image URLs are replaced with inline
@@ -53,7 +53,7 @@ pub(crate) fn render(source: &str, attachments: Option<&AttMap>) -> String {
 
 /// Return `true` if `source` appears to contain LaTeX math.
 ///
-/// Used by the transform step to decide whether to inject a MathJax script tag.
+/// Used by the transform step to decide whether to inject a `MathJax` script tag.
 /// This is a conservative check: a single `$` or `\[` triggers injection even
 /// if it is not actually a math delimiter.
 pub(crate) fn has_math(source: &str) -> bool {
@@ -67,13 +67,13 @@ fn adapt_math(event: Event<'_>) -> Event<'_> {
         // $...$  →  \(...\)
         Event::InlineMath(content) => {
             let escaped = crate::html_esc(&content);
-            Event::Html(format!("\\({}\\)", escaped).into())
+            Event::Html(format!("\\({escaped}\\)").into())
         }
         // $$...$$ or fenced math  →  \[...\]
         Event::DisplayMath(content) => {
             let escaped = crate::html_esc(&content);
             // Rust raw string so we do not have to escape the backslashes.
-            Event::Html(format!(r#"<div class="math-display">\[{}\]</div>"#, escaped).into())
+            Event::Html(format!(r#"<div class="math-display">\[{escaped}\]</div>"#).into())
         }
         other => other,
     }
@@ -84,7 +84,7 @@ fn adapt_math(event: Event<'_>) -> Event<'_> {
 fn substitute_attachments(source: &str, att: &AttMap) -> String {
     let mut result = source.to_owned();
     for (filename, mime_map) in att {
-        let placeholder = format!("attachment:{}", filename);
+        let placeholder = format!("attachment:{filename}");
         if !result.contains(&placeholder) {
             continue;
         }
@@ -98,13 +98,13 @@ fn substitute_attachments(source: &str, att: &AttMap) -> String {
 fn pick_data_uri(mime_map: &HashMap<String, String>) -> Option<String> {
     for preferred in &["image/png", "image/jpeg", "image/gif", "image/svg+xml"] {
         if let Some(data) = mime_map.get(*preferred) {
-            return Some(format!("data:{};base64,{}", preferred, data));
+            return Some(format!("data:{preferred};base64,{data}"));
         }
     }
     mime_map
         .iter()
         .next()
-        .map(|(mime, data)| format!("data:{};base64,{}", mime, data))
+        .map(|(mime, data)| format!("data:{mime};base64,{data}"))
 }
 
 // ── HTML escape for math content ──────────────────────────────────────────────

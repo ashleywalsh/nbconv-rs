@@ -7,6 +7,9 @@ repository.workspace = true
 publish     = false
 description = "Transform parsed Jupyter notebooks into typed HTML document structures"
 
+[lints]
+workspace = true
+
 [dependencies]
 nbformat       = { path = "../nbformat" }
 maud           = "0.26"

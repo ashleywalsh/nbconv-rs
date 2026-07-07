@@ -240,29 +240,28 @@ fn apply_sgr(
                 *underline = false;
                 *inverse = false;
             }
-            1 => *bold = true,
+            1 | 5 => *bold = true, // 5 = blink → bold (matches Python nbconvert)
             4 => *underline = true,
-            5 => *bold = true, // blink → bold (matches Python nbconvert)
             7 => *inverse = true,
             21 | 22 => *bold = false,
             24 => *underline = false,
             27 => *inverse = false,
-            30..=37 => *fg = Some(AnsiColor::Index((codes[i] - 30) as u8)),
+            30..=37 => *fg = Some(AnsiColor::Index(u8::try_from(codes[i] - 30).unwrap())),
             38 => {
                 if let Some(c) = ext_color(codes, &mut i) {
                     *fg = Some(c);
                 }
             }
             39 => *fg = None,
-            40..=47 => *bg = Some(AnsiColor::Index((codes[i] - 40) as u8)),
+            40..=47 => *bg = Some(AnsiColor::Index(u8::try_from(codes[i] - 40).unwrap())),
             48 => {
                 if let Some(c) = ext_color(codes, &mut i) {
                     *bg = Some(c);
                 }
             }
             49 => *bg = None,
-            90..=97 => *fg = Some(AnsiColor::Index((codes[i] - 90 + 8) as u8)),
-            100..=107 => *bg = Some(AnsiColor::Index((codes[i] - 100 + 8) as u8)),
+            90..=97 => *fg = Some(AnsiColor::Index(u8::try_from(codes[i] - 90 + 8).unwrap())),
+            100..=107 => *bg = Some(AnsiColor::Index(u8::try_from(codes[i] - 100 + 8).unwrap())),
             _ => {}
         }
         i += 1;
@@ -278,13 +277,15 @@ fn ext_color(codes: &[u32], i: &mut usize) -> Option<AnsiColor> {
         5 => {
             // 256-colour: 38;5;n
             *i += 1;
-            codes.get(*i).map(|&n| AnsiColor::Index(n as u8))
+            codes
+                .get(*i)
+                .map(|&n| AnsiColor::Index(u8::try_from(n).unwrap_or(0)))
         }
         2 if *i + 3 < codes.len() => {
             // True colour: 38;2;r;g;b
-            let r = codes[*i + 1] as u8;
-            let g = codes[*i + 2] as u8;
-            let b = codes[*i + 3] as u8;
+            let r = u8::try_from(codes[*i + 1]).unwrap_or(0);
+            let g = u8::try_from(codes[*i + 2]).unwrap_or(0);
+            let b = u8::try_from(codes[*i + 3]).unwrap_or(0);
             *i += 3;
             Some(AnsiColor::Rgb(r, g, b))
         }
@@ -294,6 +295,7 @@ fn ext_color(codes: &[u32], i: &mut usize) -> Option<AnsiColor> {
 
 // ── Span emission ─────────────────────────────────────────────────────────────
 
+#[allow(clippy::similar_names)] // draw_fg / draw_bg are intentionally parallel names
 fn push_span(
     out: &mut String,
     text: &str,
@@ -330,9 +332,9 @@ fn push_span(
         Some(AnsiColor::Index(i)) if i < 16 => classes.push(FG_INT[(i - 8) as usize]),
         Some(AnsiColor::Index(i)) => {
             let (r, g, b) = idx_rgb(i);
-            styles.push(format!("color:rgb({},{},{})", r, g, b));
+            styles.push(format!("color:rgb({r},{g},{b})"));
         }
-        Some(AnsiColor::Rgb(r, g, b)) => styles.push(format!("color:rgb({},{},{})", r, g, b)),
+        Some(AnsiColor::Rgb(r, g, b)) => styles.push(format!("color:rgb({r},{g},{b})")),
         _ => {}
     }
 
@@ -343,10 +345,10 @@ fn push_span(
         Some(AnsiColor::Index(i)) if i < 16 => classes.push(BG_INT[(i - 8) as usize]),
         Some(AnsiColor::Index(i)) => {
             let (r, g, b) = idx_rgb(i);
-            styles.push(format!("background-color:rgb({},{},{})", r, g, b));
+            styles.push(format!("background-color:rgb({r},{g},{b})"));
         }
         Some(AnsiColor::Rgb(r, g, b)) => {
-            styles.push(format!("background-color:rgb({},{},{})", r, g, b))
+            styles.push(format!("background-color:rgb({r},{g},{b})"));
         }
         _ => {}
     }

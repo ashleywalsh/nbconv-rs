@@ -21,13 +21,13 @@ use crate::{
 };
 
 /// Convert an already-parsed v3 notebook `Value` into a v4 [`Notebook`].
-pub(crate) fn from_value(v: Value) -> Result<Notebook, serde_json::Error> {
-    Ok(Notebook {
+pub(crate) fn from_value(v: &Value) -> Notebook {
+    Notebook {
         nbformat: 4,
         nbformat_minor: 0,
-        metadata: collect_metadata(&v),
-        cells: collect_cells(&v),
-    })
+        metadata: collect_metadata(v),
+        cells: collect_cells(v),
+    }
 }
 
 // ── Metadata ──────────────────────────────────────────────────────────────────
@@ -79,8 +79,8 @@ fn migrate_cell(cell: &Value) -> Option<Cell> {
             let source = join_multiline(src_val);
             let execution_count = cell
                 .get("prompt_number")
-                .and_then(|v| v.as_u64())
-                .map(|n| n as u32);
+                .and_then(Value::as_u64)
+                .map(|n| u32::try_from(n).unwrap_or(u32::MAX));
             let outputs = cell
                 .get("outputs")
                 .and_then(|o| o.as_array())
@@ -118,9 +118,11 @@ fn migrate_cell(cell: &Value) -> Option<Cell> {
             // Convert to a Markdown cell with the appropriate ATX heading prefix.
             let level = cell
                 .get("level")
-                .and_then(|l| l.as_u64())
+                .and_then(Value::as_u64)
                 .unwrap_or(1)
-                .clamp(1, 6) as usize;
+                .clamp(1, 6)
+                .try_into()
+                .unwrap(); // clamp to 1..=6 guarantees fits in usize
             let text = join_multiline(cell.get("source").cloned().unwrap_or(Value::Array(vec![])));
             let source = format!("{} {}", "#".repeat(level), text.trim_end_matches('\n'));
             Some(Cell::Markdown(MarkdownCell {
@@ -143,8 +145,8 @@ fn migrate_output(output: &Value) -> Option<Output> {
         "pyout" => Some(Output::ExecuteResult(ExecuteResultOutput {
             execution_count: output
                 .get("prompt_number")
-                .and_then(|n| n.as_u64())
-                .unwrap_or(0) as u32,
+                .and_then(Value::as_u64)
+                .map_or(0, |n| u32::try_from(n).unwrap_or(u32::MAX)),
             data: build_mime_bundle(output),
             metadata: HashMap::new(),
         })),

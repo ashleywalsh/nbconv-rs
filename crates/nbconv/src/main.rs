@@ -25,9 +25,9 @@ struct Args {
     #[arg(long, default_value = "InspiredGitHub", value_name = "NAME")]
     theme: String,
 
-    /// Disable MathJax injection for fully offline output.
+    /// Disable `MathJax` injection for fully offline output.
     ///
-    /// By default, a MathJax 3 CDN script is injected when any markdown cell
+    /// By default, a `MathJax` 3 CDN script is injected when any markdown cell
     /// contains LaTeX math.  This flag suppresses that entirely.
     #[arg(long)]
     no_mathjax: bool,
@@ -50,39 +50,35 @@ fn main() {
 
     // ── 1. Read source ───────────────────────────────────────────────────────
     // Use the input file when provided; otherwise read from stdin.
-    let (json, title) = match &args.input {
-        Some(path) => {
-            let json = std::fs::read_to_string(path).unwrap_or_else(|e| {
-                eprintln!("error: cannot read {}: {e}", path.display());
+    let (json, title) = if let Some(path) = &args.input {
+        let json = std::fs::read_to_string(path).unwrap_or_else(|e| {
+            eprintln!("error: cannot read {}: {e}", path.display());
+            std::process::exit(1);
+        });
+        let title = path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("Notebook")
+            .to_string();
+        (json, title)
+    } else {
+        use std::io::Read as _;
+        let mut json = String::new();
+        std::io::stdin()
+            .lock()
+            .read_to_string(&mut json)
+            .unwrap_or_else(|e| {
+                eprintln!("error: reading stdin: {e}");
                 std::process::exit(1);
             });
-            let title = path
-                .file_stem()
-                .and_then(|s| s.to_str())
-                .unwrap_or("Notebook")
-                .to_string();
-            (json, title)
-        }
-        None => {
-            use std::io::Read as _;
-            let mut json = String::new();
-            std::io::stdin()
-                .lock()
-                .read_to_string(&mut json)
-                .unwrap_or_else(|e| {
-                    eprintln!("error: reading stdin: {e}");
-                    std::process::exit(1);
-                });
-            (json, "Notebook".to_string())
-        }
+        (json, "Notebook".to_string())
     };
 
     let notebook = nbformat::parse(&json).unwrap_or_else(|e| {
         let src = args
             .input
             .as_ref()
-            .map(|p| p.display().to_string())
-            .unwrap_or_else(|| "stdin".to_string());
+            .map_or_else(|| "stdin".to_string(), |p| p.display().to_string());
         eprintln!("error: failed to parse {src}: {e}");
         std::process::exit(1);
     });
@@ -107,10 +103,11 @@ fn main() {
                 eprintln!("error: cannot write {}: {e}", path.display());
                 std::process::exit(1);
             });
+            #[allow(clippy::cast_precision_loss)] // file size display: precision loss is acceptable
+            let kib = html.len() as f64 / 1024.0;
             eprintln!(
-                "wrote {} ({:.1} KiB, theme: {}{})",
+                "wrote {} ({kib:.1} KiB, theme: {}{})",
                 path.display(),
-                html.len() as f64 / 1024.0,
                 args.theme,
                 if args.no_mathjax { ", no-mathjax" } else { "" },
             );

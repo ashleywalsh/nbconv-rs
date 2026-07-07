@@ -11,6 +11,9 @@ description = "Convert Jupyter notebooks to HTML"
 name = "nbconv"
 path = "src/main.rs"
 
+[lints]
+workspace = true
+
 [dependencies]
 nbformat = { path = "../nbformat" }
 nbhtml   = { path = "../nbhtml" }

@@ -70,15 +70,20 @@ impl From<serde_json::Error> for ParseError {
 
 /// Parse an `.ipynb` JSON string into a [`Notebook`].
 ///
-/// Returns [`ParseError::UnsupportedVersion`] for nbformat versions 1 and 2.
 /// nbformat v3 notebooks are automatically migrated to v4.
+///
+/// # Errors
+///
+/// Returns [`ParseError::Json`] if the input is not valid JSON or does not
+/// match the expected notebook structure, and
+/// [`ParseError::UnsupportedVersion`] for nbformat versions 1 and 2.
 pub fn parse(json: &str) -> Result<Notebook, ParseError> {
     let value: Value = serde_json::from_str(json)?;
-    let nbformat = value.get("nbformat").and_then(|v| v.as_u64()).unwrap_or(4);
+    let nbformat = value.get("nbformat").and_then(Value::as_u64).unwrap_or(4);
 
     match nbformat {
         1 | 2 => Err(ParseError::UnsupportedVersion(nbformat)),
-        3 => migrate_v3::from_value(value).map_err(ParseError::Json),
+        3 => Ok(migrate_v3::from_value(&value)),
         _ => serde_json::from_value(value).map_err(ParseError::Json),
     }
 }
@@ -143,6 +148,7 @@ pub enum Cell {
 }
 
 impl Cell {
+    #[must_use]
     pub fn source(&self) -> &str {
         match self {
             Cell::Code(c) => &c.source,
@@ -150,6 +156,7 @@ impl Cell {
             Cell::Raw(c) => &c.source,
         }
     }
+    #[must_use]
     pub fn metadata(&self) -> &CellMetadata {
         match self {
             Cell::Code(c) => &c.metadata,
@@ -157,6 +164,7 @@ impl Cell {
             Cell::Raw(c) => &c.metadata,
         }
     }
+    #[must_use]
     pub fn id(&self) -> Option<&str> {
         match self {
             Cell::Code(c) => c.id.as_deref(),
@@ -246,7 +254,7 @@ pub enum Scrolled {
 impl<'de> Deserialize<'de> for Scrolled {
     fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         struct V;
-        impl<'de> serde::de::Visitor<'de> for V {
+        impl serde::de::Visitor<'_> for V {
             type Value = Scrolled;
             fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 write!(f, "a boolean or \"auto\"")
@@ -333,12 +341,14 @@ pub struct ErrorOutput {
 pub struct MimeBundle(pub IndexMap<String, MimeData>);
 
 impl MimeBundle {
+    #[must_use]
     pub fn get(&self, mime: &str) -> Option<&MimeData> {
         self.0.get(mime)
     }
     pub fn iter(&self) -> impl Iterator<Item = (&str, &MimeData)> {
         self.0.iter().map(|(k, v)| (k.as_str(), v))
     }
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
@@ -371,16 +381,18 @@ impl MimeData {
             MimeData::String(de::join_multiline(value))
         }
     }
+    #[must_use]
     pub fn as_str(&self) -> Option<&str> {
         match self {
             MimeData::String(s) => Some(s),
-            _ => None,
+            MimeData::Json(_) => None,
         }
     }
+    #[must_use]
     pub fn as_json(&self) -> Option<&Value> {
         match self {
             MimeData::Json(v) => Some(v),
-            _ => None,
+            MimeData::String(_) => None,
         }
     }
 }

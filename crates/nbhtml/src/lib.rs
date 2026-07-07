@@ -1,6 +1,6 @@
 //! Transform a parsed [`Notebook`] into a typed [`HtmlDocument`].
 //!
-//! See [`HtmlOptions`] for configuration (theme, MathJax override) and
+//! See [`HtmlOptions`] for configuration (theme, `MathJax` override) and
 //! [`from_notebook_with_options`] for the full API.
 
 pub(crate) mod ansi;
@@ -29,7 +29,7 @@ pub struct HtmlOptions {
     ///
     /// Use [`available_themes`] to enumerate valid names.
     pub theme: String,
-    /// Override MathJax injection.
+    /// Override `MathJax` injection.
     ///
     /// * `None` – auto-detect: inject only when a markdown cell
     ///   contains `$`, `\[`, or `\(`.
@@ -48,6 +48,7 @@ impl Default for HtmlOptions {
 }
 
 /// Return the names of all available syntax-highlighting themes, sorted.
+#[must_use]
 pub fn available_themes() -> Vec<String> {
     highlight::available_themes()
 }
@@ -123,7 +124,8 @@ pub enum CellOutput {
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
-/// Convert a notebook using default options (InspiredGitHub theme, auto MathJax).
+/// Convert a notebook using default options (`InspiredGitHub` theme, auto `MathJax`).
+#[must_use]
 pub fn from_notebook(nb: &Notebook) -> HtmlDocument {
     let title = nb
         .metadata
@@ -135,11 +137,13 @@ pub fn from_notebook(nb: &Notebook) -> HtmlDocument {
 }
 
 /// Like [`from_notebook`] but with an explicit page title.
+#[must_use]
 pub fn from_notebook_titled(nb: &Notebook, title: impl Into<String>) -> HtmlDocument {
     build(nb, title.into(), &HtmlOptions::default())
 }
 
 /// Full API: explicit title + configuration.
+#[must_use]
 pub fn from_notebook_with_options(
     nb: &Notebook,
     title: impl Into<String>,
@@ -176,8 +180,7 @@ fn build(nb: &Notebook, title: String, opts: &HtmlOptions) -> HtmlDocument {
         .metadata
         .language_info
         .as_ref()
-        .map(|li| li.name.clone())
-        .unwrap_or_else(|| "python".to_string());
+        .map_or_else(|| "python".to_string(), |li| li.name.clone());
 
     let inject_mathjax = match opts.mathjax {
         Some(v) => v,
@@ -290,7 +293,7 @@ fn transform_mime(bundle: &MimeBundle, ec: Option<u32>) -> Option<CellOutput> {
                         execution_count: ec,
                     })
                 }
-                ("image/png", MimeData::String(r)) | ("image/jpeg", MimeData::String(r)) => {
+                ("image/png" | "image/jpeg", MimeData::String(r)) => {
                     let data: String = r.chars().filter(|c| !c.is_whitespace()).collect();
                     return Some(CellOutput::Image {
                         mime: mime.to_string(),
