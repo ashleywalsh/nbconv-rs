@@ -11,27 +11,34 @@ body {
   font-size: 14px; line-height: 1.6; color: #212121;
   background: #ffffff; margin: 0; padding: 0;
 }
-.jp-Notebook { max-width: 980px; margin: 0 auto; padding: 1.5rem 2rem 4rem; }
-.jp-Cell { margin-bottom: 0.5rem; }
-.jp-Cell-inputWrapper { display: flex; align-items: flex-start; }
+.jp-Notebook { padding: 10px; }
+.jp-Cell { padding: 5px; margin: 0; }
+.jp-Cell-inputWrapper { display: flex; flex-direction: row; align-items: flex-start; }
+.jp-Collapser {
+  flex: 0 0 8px; border-right: 1px solid transparent; padding: 12px 4px;
+}
+.jp-InputArea { display: table; table-layout: fixed; width: 100%; }
 .jp-InputPrompt, .jp-OutputPrompt {
   font-family: \"SFMono-Regular\", Consolas, \"Liberation Mono\", Menlo, monospace;
-  font-size: 12px; min-width: 7rem; text-align: right;
-  padding: 5px 0.5rem 0 0; flex-shrink: 0; user-select: none;
+  font-size: 12px; width: 64px; text-align: right;
+  padding: 5px 8px 0 0; user-select: none;
+  display: table-cell; vertical-align: top;
 }
 .jp-InputPrompt { color: #303f9f; }
 .jp-OutputPrompt { color: #e65100; }
-.jp-InputArea-editor { flex: 1; min-width: 0; }
+.jp-InputArea-editor {
+  display: table-cell; vertical-align: top; overflow: hidden;
+  background: #f8f8f8; border: 1px solid #e0e0e0;
+}
 .jp-InputArea-editor pre {
   margin: 0; padding: 0.5rem 0.75rem;
-  background: #f8f8f8; border: 1px solid #e0e0e0; border-radius: 2px;
-  overflow-x: auto;
+  background: none; border: none;
   font-family: \"SFMono-Regular\", Consolas, \"Liberation Mono\", Menlo, monospace;
-  font-size: 13px; line-height: 1.5; white-space: pre;
+  font-size: 13px; line-height: 1.5; white-space: pre; overflow-x: auto;
 }
 .jp-Cell-outputWrapper { margin-top: 0; }
-.jp-OutputArea-child { display: flex; align-items: flex-start; }
-.jp-OutputArea-output { flex: 1; min-width: 0; padding: 0.15rem 0; }
+.jp-OutputArea-child { display: table; table-layout: fixed; width: 100%; }
+.jp-OutputArea-output { display: table-cell; width: 100%; padding: 0.15rem 0; vertical-align: top; }
 .jp-RenderedText pre {
   margin: 0; padding: 0; background: none; border: none;
   font-family: \"SFMono-Regular\", Consolas, \"Liberation Mono\", Menlo, monospace;
@@ -61,10 +68,10 @@ body {
   font-family: \"SFMono-Regular\", Consolas, \"Liberation Mono\", Menlo, monospace;
   font-size: 12px; line-height: 1.5; white-space: pre-wrap; word-break: break-all;
 }
-.jp-RawCell { padding: 0.25rem 0 0.25rem 7.5rem; }
-.jp-RawCell pre { color: #666; font-size: 13px; white-space: pre-wrap; }
-/* ── Markdown ─────────────────────────────────────────────────────────────── */
-.jp-MarkdownCell { padding: 0.3rem 0 0.3rem 7.5rem; }
+.jp-RawOutput { display: table-cell; width: 100%; padding: 0.25rem 0; }
+.jp-RawOutput pre { color: #666; font-size: 13px; white-space: pre-wrap; }
+/* ── Markdown ────────────────────────────────────────────────────────────────── */
+.jp-MarkdownOutput { display: table-cell; width: 100%; padding: 0.3rem 0; }
 .jp-RenderedMarkdown h1, .jp-RenderedMarkdown h2, .jp-RenderedMarkdown h3,
 .jp-RenderedMarkdown h4, .jp-RenderedMarkdown h5, .jp-RenderedMarkdown h6 {
   margin: 0.75rem 0 0.35rem; font-weight: 600; line-height: 1.3;
@@ -151,26 +158,29 @@ fn render_code_cell(cell: &HtmlCell) -> Markup {
     html! {
         div class="jp-Cell jp-CodeCell jp-Notebook-cell" {
             div class="jp-Cell-inputWrapper" {
-                @match &cell.input {
-                    CellInput::Source { text, prompt, highlighted } => {
-                        div class="jp-InputPrompt jp-InputArea-prompt" {
-                            (in_prompt(*prompt))
-                        }
-                        div class="jp-InputArea-editor" {
-                            pre {
-                                @if let Some(html) = highlighted {
-                                    (PreEscaped(html))  // syntect inline styles — not re-escaped
-                                } @else {
-                                    (text)
+                div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser" {}
+                div class="jp-InputArea jp-Cell-inputArea" {
+                    @match &cell.input {
+                        CellInput::Source { text, prompt, highlighted } => {
+                            div class="jp-InputPrompt jp-InputArea-prompt" {
+                                (in_prompt(*prompt))
+                            }
+                            div class="jp-InputArea-editor" {
+                                pre {
+                                    @if let Some(html) = highlighted {
+                                        (PreEscaped(html))  // syntect inline styles — not re-escaped
+                                    } @else {
+                                        (text)
+                                    }
                                 }
                             }
                         }
-                    }
-                    CellInput::Empty => {
-                        div class="jp-InputPrompt jp-InputArea-prompt" {
-                            (PreEscaped("In&nbsp;[&nbsp;]:"))
+                        CellInput::Empty => {
+                            div class="jp-InputPrompt jp-InputArea-prompt" {
+                                (PreEscaped("In&nbsp;[&nbsp;]:"))
+                            }
+                            div class="jp-InputArea-editor" { pre {} }
                         }
-                        div class="jp-InputArea-editor" { pre {} }
                     }
                 }
             }
@@ -196,9 +206,15 @@ fn render_markdown_cell(cell: &HtmlCell) -> Markup {
     };
     html! {
         div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" {
-            div class="jp-MarkdownCell jp-RenderedHTMLCommon jp-RenderedMarkdown" {
-                @if let Some(rendered) = content {
-                    (PreEscaped(rendered))
+            div class="jp-Cell-inputWrapper" {
+                div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser" {}
+                div class="jp-InputArea jp-Cell-inputArea" {
+                    div class="jp-InputPrompt jp-InputArea-prompt" {}
+                    div class="jp-MarkdownOutput jp-RenderedHTMLCommon jp-RenderedMarkdown" {
+                        @if let Some(rendered) = content {
+                            (PreEscaped(rendered))
+                        }
+                    }
                 }
             }
         }
@@ -212,9 +228,15 @@ fn render_raw_cell(cell: &HtmlCell) -> Markup {
     };
     html! {
         div class="jp-Cell jp-RawCell jp-Notebook-cell" {
-            div class="jp-RawCell" {
-                @if let Some(text) = text {
-                    pre { (text) }
+            div class="jp-Cell-inputWrapper" {
+                div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser" {}
+                div class="jp-InputArea jp-Cell-inputArea" {
+                    div class="jp-InputPrompt jp-InputArea-prompt" {}
+                    div class="jp-RawOutput" {
+                        @if let Some(text) = text {
+                            pre { (text) }
+                        }
+                    }
                 }
             }
         }
