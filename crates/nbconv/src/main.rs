@@ -13,6 +13,7 @@ use clap::Parser;
 )]
 struct Args {
     /// Input `.ipynb` file (omit when using --list-themes).
+    /// Uses stdin if not provided.
     input: Option<PathBuf>,
 
     /// Write HTML to this file instead of stdout.
