@@ -4,8 +4,6 @@
 # By default cleans comparisons/ only.
 # Pass --corpus to also remove cloned corpus repos (they can be re-cloned
 # with setup_corpus.sh, but this takes time on a slow connection).
-#
-# Never touches results/benchmarks/ — those are committed to git.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
