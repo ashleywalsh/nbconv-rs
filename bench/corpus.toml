@@ -1,15 +1,7 @@
 [[repos]]
-name        = "handson-ml3"
-url         = "https://github.com/ageron/handson-ml3"
-license     = "Apache-2.0"
-description = "Hands-on Machine Learning with Scikit-Learn, Keras and TensorFlow, 3rd edition"
-enabled     = true
-glob        = "*.ipynb"
-
-[[repos]]
 name        = "PythonDataScienceHandbook"
 url         = "https://github.com/jakevdp/PythonDataScienceHandbook"
 license     = "MIT"
 description = "Python Data Science Handbook"
-enabled     = false
+enabled     = true
 glob        = "notebooks/*.ipynb"
