@@ -1,15 +1,22 @@
 [workspace]
-members  = ["crates/nbformat", "crates/nbhtml", "crates/nbconv"]
+members = ["crates/nbformat", "crates/nbhtml", "crates/nbconv"]
 resolver = "2"
 
 [workspace.package]
-edition    = "2021"
-license    = "MIT"
+edition = "2021"
+license = "MIT"
 repository = "https://github.com/ashleywalsh/nbconv-rs"
 
 [profile.release]
-lto           = true
+lto = true
 codegen-units = 1
+
+# Release build with debug symbols, for use with sampling profilers.
+# Not used for distribution: `cargo build --release` is unaffected.
+[profile.profiling]
+inherits = "release"
+debug = true
+strip = false
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
