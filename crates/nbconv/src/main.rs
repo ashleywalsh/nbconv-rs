@@ -2,6 +2,7 @@
 
 use std::io::Write as IoWrite;
 use std::path::PathBuf;
+use std::process::ExitCode;
 
 use clap::Parser;
 
@@ -38,51 +39,85 @@ struct Args {
     list_themes: bool,
 }
 
-fn main() {
-    let args = Args::parse();
+/// Enter a named profiling span until the end of the enclosing block.
+/// Expands to nothing unless the `profiling` feature is enabled.
+macro_rules! phase {
+    ($name:literal) => {
+        #[cfg(feature = "profiling")]
+        let _phase = tracing::info_span!($name).entered();
+    };
+}
+
+fn main() -> ExitCode {
+    // Declared before `run` so it is dropped (flushing the trace file) after
+    // `run` returns, on both success and failure.
+    #[cfg(feature = "profiling")]
+    let _trace_guard = init_tracing();
+
+    match run(&Args::parse()) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(msg) => {
+            eprintln!("error: {msg}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+/// Install a Chrome-trace subscriber writing to `nbconv-trace.json` in the
+/// current directory. The file is written when the returned guard is dropped.
+#[cfg(feature = "profiling")]
+fn init_tracing() -> tracing_chrome::FlushGuard {
+    use tracing_subscriber::prelude::*;
+
+    let (layer, guard) = tracing_chrome::ChromeLayerBuilder::new()
+        .file("nbconv-trace.json")
+        .build();
+    tracing_subscriber::registry().with(layer).init();
+    guard
+}
+
+fn run(args: &Args) -> Result<(), String> {
+    phase!("main");
 
     // ── --list-themes ─────────────────────────────────────────────────────────
     if args.list_themes {
         for name in nbhtml::available_themes() {
             println!("{name}");
         }
-        return;
+        return Ok(());
     }
 
     // ── 1. Read source ───────────────────────────────────────────────────────
     // Use the input file when provided; otherwise read from stdin.
-    let (json, title) = if let Some(path) = &args.input {
-        let json = std::fs::read_to_string(path).unwrap_or_else(|e| {
-            eprintln!("error: cannot read {}: {e}", path.display());
-            std::process::exit(1);
-        });
-        let title = path
-            .file_stem()
-            .and_then(|s| s.to_str())
-            .unwrap_or("Notebook")
-            .to_string();
-        (json, title)
-    } else {
-        use std::io::Read as _;
-        let mut json = String::new();
-        std::io::stdin()
-            .lock()
-            .read_to_string(&mut json)
-            .unwrap_or_else(|e| {
-                eprintln!("error: reading stdin: {e}");
-                std::process::exit(1);
-            });
-        (json, "Notebook".to_string())
+    let (json, title) = {
+        phase!("read");
+        if let Some(path) = &args.input {
+            let json = std::fs::read_to_string(path)
+                .map_err(|e| format!("cannot read {}: {e}", path.display()))?;
+            let title = path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("Notebook")
+                .to_string();
+            (json, title)
+        } else {
+            use std::io::Read as _;
+            let mut json = String::new();
+            std::io::stdin()
+                .lock()
+                .read_to_string(&mut json)
+                .map_err(|e| format!("reading stdin: {e}"))?;
+            (json, "Notebook".to_string())
+        }
     };
 
-    let notebook = nbformat::parse(&json).unwrap_or_else(|e| {
+    let notebook = nbformat::parse(&json).map_err(|e| {
         let src = args
             .input
             .as_ref()
             .map_or_else(|| "stdin".to_string(), |p| p.display().to_string());
-        eprintln!("error: failed to parse {src}: {e}");
-        std::process::exit(1);
-    });
+        format!("failed to parse {src}: {e}")
+    })?;
 
     // ── 2. Transform ──────────────────────────────────────────────────────────
     let title = title.as_str();
@@ -98,12 +133,11 @@ fn main() {
     let html = doc.render();
 
     // ── 4. Write ──────────────────────────────────────────────────────────────
+    phase!("write");
     match &args.output {
         Some(path) => {
-            std::fs::write(path, html.as_bytes()).unwrap_or_else(|e| {
-                eprintln!("error: cannot write {}: {e}", path.display());
-                std::process::exit(1);
-            });
+            std::fs::write(path, html.as_bytes())
+                .map_err(|e| format!("cannot write {}: {e}", path.display()))?;
             #[allow(clippy::cast_precision_loss)] // file size display: precision loss is acceptable
             let kib = html.len() as f64 / 1024.0;
             eprintln!(
@@ -117,10 +151,9 @@ fn main() {
             std::io::stdout()
                 .lock()
                 .write_all(html.as_bytes())
-                .unwrap_or_else(|e| {
-                    eprintln!("error: write to stdout: {e}");
-                    std::process::exit(1);
-                });
+                .map_err(|e| format!("write to stdout: {e}"))?;
         }
     }
+
+    Ok(())
 }

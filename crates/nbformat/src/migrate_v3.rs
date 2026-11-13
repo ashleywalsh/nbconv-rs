@@ -21,6 +21,10 @@ use crate::{
 };
 
 /// Convert an already-parsed v3 notebook `Value` into a v4 [`Notebook`].
+#[cfg_attr(
+    feature = "profiling",
+    tracing::instrument(name = "migrate_v3", skip_all)
+)]
 pub(crate) fn from_value(v: &Value) -> Notebook {
     Notebook {
         nbformat: 4,

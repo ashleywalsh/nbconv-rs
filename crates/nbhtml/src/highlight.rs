@@ -13,11 +13,21 @@ const DEFAULT_THEME: &str = "InspiredGitHub";
 static SS: OnceLock<SyntaxSet> = OnceLock::new();
 static TS: OnceLock<ThemeSet> = OnceLock::new();
 
+// The one-off loads get their own spans so their cost is not attributed to
+// whichever cell happens to be highlighted first.
 fn ss() -> &'static SyntaxSet {
-    SS.get_or_init(SyntaxSet::load_defaults_newlines)
+    SS.get_or_init(|| {
+        #[cfg(feature = "profiling")]
+        let _span = tracing::info_span!("load_syntax_set").entered();
+        SyntaxSet::load_defaults_newlines()
+    })
 }
 fn ts() -> &'static ThemeSet {
-    TS.get_or_init(ThemeSet::load_defaults)
+    TS.get_or_init(|| {
+        #[cfg(feature = "profiling")]
+        let _span = tracing::info_span!("load_theme_set").entered();
+        ThemeSet::load_defaults()
+    })
 }
 
 fn resolve_theme(name: &str) -> &'static Theme {
@@ -33,6 +43,7 @@ fn resolve_theme(name: &str) -> &'static Theme {
 ///
 /// Returns inner `<span style="…">` HTML — no `<pre>` wrapper.
 /// Falls back to plain HTML-escaped text on unknown language or error.
+#[cfg_attr(feature = "profiling", tracing::instrument(skip_all))]
 pub(crate) fn highlight(source: &str, language: &str, theme: &str) -> String {
     let ss = ss();
     let syn = find_syntax(ss, language);

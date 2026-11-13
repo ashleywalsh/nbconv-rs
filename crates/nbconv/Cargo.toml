@@ -1,10 +1,10 @@
 [package]
 name = "nbconv"
 version = "0.1.0"
-edition.workspace    = true
-license.workspace    = true
+edition.workspace = true
+license.workspace = true
 repository.workspace = true
-publish     = false
+publish = false
 description = "Convert Jupyter notebooks to HTML"
 
 [[bin]]
@@ -14,7 +14,24 @@ path = "src/main.rs"
 [lints]
 workspace = true
 
+[features]
+# Record a Chrome/Perfetto trace of each run to `nbconv-trace.json`.
+# Development only: never enabled in distributed builds.
+profiling = [
+    "dep:tracing",
+    "dep:tracing-chrome",
+    "dep:tracing-subscriber",
+    "nbformat/profiling",
+    "nbhtml/profiling",
+]
+
 [dependencies]
 nbformat = { path = "../nbformat" }
-nbhtml   = { path = "../nbhtml" }
+nbhtml = { path = "../nbhtml" }
 clap = { version = "4", features = ["derive"] }
+tracing = { version = "0.1", optional = true }
+tracing-chrome = { version = "0.7", optional = true }
+tracing-subscriber = { version = "0.3", optional = true, default-features = false, features = [
+    "registry",
+    "std",
+] }

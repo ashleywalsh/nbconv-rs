@@ -144,6 +144,10 @@ pub(crate) fn strip(input: &str) -> String {
 ///
 /// Plain text content is HTML-escaped.  Non-SGR escape sequences are
 /// silently discarded.  Returns an HTML fragment safe to embed inside `<pre>`.
+#[cfg_attr(
+    feature = "profiling",
+    tracing::instrument(name = "ansi_to_html", skip_all)
+)]
 pub(crate) fn to_html(input: &str) -> String {
     let mut out = String::with_capacity(input.len() * 2);
 

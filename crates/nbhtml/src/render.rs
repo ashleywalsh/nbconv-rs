@@ -112,6 +112,7 @@ const MATHJAX_CDN: &str = "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.
 
 impl HtmlDocument {
     #[must_use]
+    #[cfg_attr(feature = "profiling", tracing::instrument(skip_all))]
     pub fn render(&self) -> String {
         html! {
             (DOCTYPE)
@@ -146,6 +147,7 @@ impl HtmlDocument {
     }
 }
 
+#[cfg_attr(feature = "profiling", tracing::instrument(skip_all))]
 fn render_cell(cell: &HtmlCell) -> Markup {
     match cell.kind {
         CellKind::Code => render_code_cell(cell),

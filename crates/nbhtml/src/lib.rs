@@ -175,6 +175,10 @@ pub(crate) fn html_esc(s: &str) -> String {
 
 // ── Internal ──────────────────────────────────────────────────────────────────
 
+#[cfg_attr(
+    feature = "profiling",
+    tracing::instrument(name = "transform", skip_all)
+)]
 fn build(nb: &Notebook, title: String, opts: &HtmlOptions) -> HtmlDocument {
     let language = nb
         .metadata
@@ -211,6 +215,7 @@ fn build(nb: &Notebook, title: String, opts: &HtmlOptions) -> HtmlDocument {
     }
 }
 
+#[cfg_attr(feature = "profiling", tracing::instrument(skip_all))]
 fn transform_cell(cell: &Cell, language: &str, theme: &str) -> HtmlCell {
     match cell {
         Cell::Code(c) => HtmlCell {

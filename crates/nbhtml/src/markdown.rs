@@ -23,6 +23,10 @@ type AttMap = HashMap<String, HashMap<String, String>>;
 ///
 /// `attachments` maps `filename → mime_type → base64_data` as stored on a
 /// [`nbformat::MarkdownCell`].
+#[cfg_attr(
+    feature = "profiling",
+    tracing::instrument(name = "markdown", skip_all)
+)]
 pub(crate) fn render(source: &str, attachments: Option<&AttMap>) -> String {
     let opts = Options::ENABLE_MATH
         | Options::ENABLE_STRIKETHROUGH

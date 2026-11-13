@@ -77,14 +77,23 @@ impl From<serde_json::Error> for ParseError {
 /// Returns [`ParseError::Json`] if the input is not valid JSON or does not
 /// match the expected notebook structure, and
 /// [`ParseError::UnsupportedVersion`] for nbformat versions 1 and 2.
+#[cfg_attr(feature = "profiling", tracing::instrument(skip_all))]
 pub fn parse(json: &str) -> Result<Notebook, ParseError> {
-    let value: Value = serde_json::from_str(json)?;
+    let value: Value = {
+        #[cfg(feature = "profiling")]
+        let _span = tracing::info_span!("json_to_value").entered();
+        serde_json::from_str(json)?
+    };
     let nbformat = value.get("nbformat").and_then(Value::as_u64).unwrap_or(4);
 
     match nbformat {
         1 | 2 => Err(ParseError::UnsupportedVersion(nbformat)),
         3 => Ok(migrate_v3::from_value(&value)),
-        _ => serde_json::from_value(value).map_err(ParseError::Json),
+        _ => {
+            #[cfg(feature = "profiling")]
+            let _span = tracing::info_span!("value_to_notebook").entered();
+            serde_json::from_value(value).map_err(ParseError::Json)
+        }
     }
 }
 
