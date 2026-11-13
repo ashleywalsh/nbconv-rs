@@ -135,7 +135,7 @@ mod tests {
     #[test]
     fn unknown_language_does_not_panic() {
         let html = highlight("def foo(): pass", "xyzzy_not_real", DEFAULT_THEME);
-        assert!(!html.is_empty());
+        assert_ne!(html, "");
     }
 
     #[test]
@@ -156,7 +156,6 @@ mod tests {
         let themes = available_themes();
         assert!(themes.contains(&"InspiredGitHub".to_string()));
         assert!(themes.contains(&"Solarized (dark)".to_string()));
-        assert!(!themes.is_empty());
     }
 
     #[test]
