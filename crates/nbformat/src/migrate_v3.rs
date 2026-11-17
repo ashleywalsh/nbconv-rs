@@ -88,8 +88,7 @@ fn migrate_cell(cell: &Value) -> Option<Cell> {
             let outputs = cell
                 .get("outputs")
                 .and_then(|o| o.as_array())
-                .map(|arr| arr.iter().filter_map(migrate_output).collect())
-                .unwrap_or_default();
+                .map_or_default(|arr| arr.iter().filter_map(migrate_output).collect());
             Some(Cell::Code(CodeCell {
                 id: None,
                 source,
@@ -160,12 +159,11 @@ fn migrate_output(output: &Value) -> Option<Output> {
             traceback: output
                 .get("traceback")
                 .and_then(|t| t.as_array())
-                .map(|arr| {
+                .map_or_default(|arr| {
                     arr.iter()
                         .filter_map(|v| v.as_str().map(String::from))
                         .collect()
-                })
-                .unwrap_or_default(),
+                }),
         })),
         "stream" => {
             // v3 "stream" field → v4 "name" field
